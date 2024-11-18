@@ -16,10 +16,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { removeItemFromCart } from '../../service/cart/RemoveItemFromCart';
 import { increaseOrDecreaseCartItem } from '../../service/cart/IncreaseOrDecreaseCartItems';
-import { handlePayment } from '../../service/rozarpay/rozerpay';
+// import { handlePayment } from '../../service/rozarpay/rozerpay';
+// import RazorpayPaymentScreen from '../../service/rozarpay/rozarpay';
+import { useNavigation, useRouter } from 'expo-router';
+import RazorpayPaymentScreen from '../../service/rozarpay/RazorpayPaymentScreen';
 
 export default function Cart() {
   const [allCartItems, setAllCartItems] = useState([]);
+  const router = useRouter();
+  
+
 
   const getCartItemMethod = async () => {
     const response = await getCartItems();
@@ -108,7 +114,13 @@ export default function Cart() {
 
   // Payment handler
   const doPayment = async () => {
-    const a = await handlePayment();
+    const orderId="order_PMSNen1QWtsEPD"
+    console.log("payment start")
+    router.push(`/rozarpay/${orderId}`);
+    // /Users/shashikushwaha/Documents/React_workspace/rozerpayIntegration/Grocery-app/app/rozarpay.js
+    // return <RazorpayPaymentScreen/>
+    // navigation.navigate('RazorpayPaymentScreen');
+    // await handlePayment();
   };
 
   const renderCartItem = ({ item }) => (
