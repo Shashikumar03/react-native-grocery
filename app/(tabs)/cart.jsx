@@ -8,7 +8,7 @@ import {
   StatusBar,
   ToastAndroid,
   Alert,
-  TouchableHighlight,
+  RefreshControl,
 } from 'react-native';
 import React, { useState, useCallback } from 'react';
 import { getCartItems } from '../../service/cart/GetCartItems';
@@ -16,39 +16,41 @@ import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { removeItemFromCart } from '../../service/cart/RemoveItemFromCart';
 import { increaseOrDecreaseCartItem } from '../../service/cart/IncreaseOrDecreaseCartItems';
-// import { handlePayment } from '../../service/rozarpay/rozerpay';
-// import RazorpayPaymentScreen from '../../service/rozarpay/rozarpay';
-import { useNavigation, useRouter } from 'expo-router';
-import RazorpayPaymentScreen from '../../service/rozarpay/RazorpayPaymentScreen';
+import { useRouter } from 'expo-router';
 
 export default function Cart() {
   const [allCartItems, setAllCartItems] = useState([]);
+  const [refreshing, setRefreshing] = useState(false); // State to manage the refresh indicator
   const router = useRouter();
-  
-
 
   const getCartItemMethod = async () => {
     const response = await getCartItems();
     if (response.success) {
-      // Sort the cart items based on the cartItemId
       const sortedItems = response.data.cartItemsDto.sort((a, b) => a.cartItemId - b.cartItemId);
-
-      // Update the state with the sorted cart items and total price
       setAllCartItems({
         ...response.data,
-        cartItemsDto: sortedItems,  // Store the sorted cart items
+        cartItemsDto: sortedItems,
       });
     } else {
       console.log(response.data.message);
     }
   };
 
-  // Use useFocusEffect to refetch data when the screen is focused
   useFocusEffect(
     useCallback(() => {
-      getCartItemMethod();  // Fetch the cart items when the screen is focused
-    }, []) // Empty dependency array means it runs when the screen is focused
+      console.log("Screen focused");
+      getCartItemMethod();
+      return () => {
+        console.log("Screen unfocused");
+      };
+    }, [])
   );
+
+  const onRefresh = async () => {
+    setRefreshing(true); // Show the refresh indicator
+    await getCartItemMethod(); // Fetch new cart data
+    setRefreshing(false); // Hide the refresh indicator
+  };
 
   const confirmDeleteItem = (productId) => {
     Alert.alert(
@@ -62,17 +64,16 @@ export default function Cart() {
         },
         {
           text: 'Yes',
-          onPress: () => handleDeleteItem(productId),  // Proceed with deletion if confirmed
+          onPress: () => handleDeleteItem(productId),
         },
       ]
     );
   };
 
-  // Handle deleting an item
   const handleDeleteItem = async (productId) => {
-    const response = await removeItemFromCart(1, productId);  // Assuming userId is 1 for now
+    const response = await removeItemFromCart(1, productId);
     if (response.success) {
-      getCartItemMethod();  // Refresh the cart after deletion
+      getCartItemMethod();
     } else {
       console.log('Failed to delete item');
       ToastAndroid.show(
@@ -82,7 +83,6 @@ export default function Cart() {
     }
   };
 
-  // Handle quantity change
   const updateQuantity = async (item, newQuantity) => {
     const cartItemId = item.cartItemId;
     const itemQuantity = item.quantity;
@@ -94,15 +94,13 @@ export default function Cart() {
 
     let response;
     if (newQuantity > itemQuantity) {
-      console.log("Increasing quantity");
-      response = await increaseOrDecreaseCartItem(cartItemId, "add");  // Increase quantity
+      response = await increaseOrDecreaseCartItem(cartItemId, "add");
     } else {
-      console.log("Decreasing quantity");
-      response = await increaseOrDecreaseCartItem(cartItemId, "dec");  // Decrease quantity
+      response = await increaseOrDecreaseCartItem(cartItemId, "dec");
     }
 
     if (response.success) {
-      getCartItemMethod();  // Refresh the cart with updated data
+      getCartItemMethod();
     } else {
       console.log('Failed to update quantity');
       ToastAndroid.show(
@@ -112,31 +110,21 @@ export default function Cart() {
     }
   };
 
-  // Payment handler
   const doPayment = async () => {
-    const orderId="order_PMSNen1QWtsEPD"
-    console.log("payment start")
+    const orderId = "order_PMSNen1QWtsEPD";
+    console.log("payment start");
     router.push(`/rozarpay/${orderId}`);
-    // /Users/shashikushwaha/Documents/React_workspace/rozerpayIntegration/Grocery-app/app/rozarpay.js
-    // return <RazorpayPaymentScreen/>
-    // navigation.navigate('RazorpayPaymentScreen');
-    // await handlePayment();
   };
 
   const renderCartItem = ({ item }) => (
     <View style={styles.cartItemContainer}>
-      {/* Display product image */}
       <Image
         source={{ uri: item.imageUrl }}
         style={styles.productImage}
         resizeMode="cover"
       />
-
-      {/* Display product details */}
       <View style={styles.detailsContainer}>
         <Text style={styles.productName}>{item.productName}</Text>
-
-        {/* Quantity Management */}
         <View style={styles.quantityContainer}>
           <TouchableOpacity
             style={styles.quantityButton}
@@ -152,11 +140,8 @@ export default function Cart() {
             <Icon name="add" size={20} color="white" />
           </TouchableOpacity>
         </View>
-
         <Text style={styles.price}>Price: RS {item.price.toFixed(2)}</Text>
       </View>
-
-      {/* Delete icon */}
       <TouchableOpacity onPress={() => confirmDeleteItem(item.productId)}>
         <Icon name="delete" size={30} color="red" />
       </TouchableOpacity>
@@ -165,19 +150,29 @@ export default function Cart() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.cartTitle}>Cart Items</Text>
-
-      {/* Display Cart Items */}
-      <FlatList
-        data={allCartItems.cartItemsDto}
-        keyExtractor={(item) => item.cartItemId.toString()}
-        renderItem={renderCartItem}
-      />
-
-      {/* Display Total Price */}
+      <Text style={styles.cartTitle}>Cart Items </Text>
+      <Text style={{marginBottom:10}}> pull down to refresh cart item</Text>
+      {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? (
+        <Text style={styles.emptyCartText}>No items in the cart</Text>
+      ) : (
+        <FlatList
+          data={allCartItems.cartItemsDto}
+          keyExtractor={(item) => item.cartItemId.toString()}
+          renderItem={renderCartItem}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh} // Link the refresh control to the onRefresh function
+            />
+          }
+        />
+      )}
       <View style={styles.totalContainer}>
-        <TouchableOpacity onPress={() => doPayment()}>
-          <Text style={styles.totalText}>
+        <TouchableOpacity
+          onPress={() => doPayment()}
+          disabled={allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0}
+        >
+          <Text style={[styles.totalText, { opacity: allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? 0.5 : 1 }]}>
             Place Order: RS {allCartItems.cartTotalPrice?.toFixed(2)}
           </Text>
         </TouchableOpacity>
@@ -196,6 +191,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
+  },
+  emptyCartText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'gray',
+    textAlign: 'center',
+    marginTop: 20,
   },
   cartItemContainer: {
     flexDirection: 'row',
@@ -253,17 +255,5 @@ const styles = StyleSheet.create({
     backgroundColor: "blue",
     borderRadius: 3,
     padding: 2,
-  },
-  paymentButton: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: 'green',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  paymentText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });

@@ -4,10 +4,11 @@ import { NavigationContainer } from '@react-navigation/native';
 
 export default function RootLayout() {
   
-  isAuthenticated= false
+  isAuthenticated= true
   return (
     <>
     <NavigationContainer>
+      
       <Stack screenOptions={{
         headerShown: false,
       }}>

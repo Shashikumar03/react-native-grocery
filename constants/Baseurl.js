@@ -1,5 +1,5 @@
 export function getBaseUrl() {
-    return "http://192.168.0.102:9191"
+    return "http://192.168.0.155:9191"
     // "anty wifi"
       // return "http://192.168.0.189:8283";
       // "vishal"
