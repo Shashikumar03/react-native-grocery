@@ -1,9 +1,9 @@
 import axios from "axios";
 import { getBaseUrl } from "../../constants/Baseurl";
 
-export const addProductToCart = async (productId, quantity) => {
+export const addProductToCart = async ( userId,productId, quantity) => {
     try {
-        const url = `${getBaseUrl()}/api/v1/carts/1/add`;
+        const url = `${getBaseUrl()}/api/v1/carts/${userId}/add`;
 
         // Define the payload to be sent in the POST request
         const payload = {

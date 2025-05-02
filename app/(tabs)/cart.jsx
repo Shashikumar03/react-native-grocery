@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { removeItemFromCart } from '../../service/cart/RemoveItemFromCart';
 import { increaseOrDecreaseCartItem } from '../../service/cart/IncreaseOrDecreaseCartItems';
 import { useRouter } from 'expo-router';
+import { getUserId } from '../../utils/token';
 
 export default function Cart() {
   const [allCartItems, setAllCartItems] = useState([]);
@@ -71,7 +72,9 @@ export default function Cart() {
   };
 
   const handleDeleteItem = async (productId) => {
-    const response = await removeItemFromCart(1, productId);
+    const userId=getUserId()
+
+    const response = await removeItemFromCart(userId, productId);
     if (response.success) {
       getCartItemMethod();
     } else {

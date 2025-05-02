@@ -13,18 +13,21 @@ export function useAuth() {
       console.log("🔐 Retrieved token:", token); // Debugging token
 
       if (token) {
-        try {
-          const decoded = jwtDecode(token);
-          console.log("🧠 Decoded token:", decoded); // Debugging decoded token
+        setIsSignedIn(true)
+        // try {
+        //   console.log(token)
+        // //   const decoded = jwtDecode(token);
+        // //   console.log("🧠 Decoded token:", decoded); // Debugging decoded token
 
-          const isExpired = decoded.exp * 1000 < Date.now();
-          console.log("⏳ Is token expired?", isExpired); // Debugging expiry check
+        // //   const isExpired = decoded.exp * 1000 < Date.now();
+        // //   console.log("⏳ Is token expired?", isExpired); // Debugging expiry check
 
-          setIsSignedIn(!isExpired);
-        } catch (err) {
-          console.error("❌ Error decoding token", err);
-          setIsSignedIn(false);
-        }
+        // //   // setIsSignedIn(!isExpired);
+        // } catch (err) {
+        //   // console.error("❌ Error decoding token", err);
+        //   // setIsSignedIn(false);
+        //   console.log("")
+        // }
       } else {
         console.warn("⚠️ No token found");
         setIsSignedIn(false);

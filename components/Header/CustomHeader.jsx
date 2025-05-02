@@ -1,11 +1,14 @@
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Alert } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import Octicons from '@expo/vector-icons/Octicons';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { getToken } from '../../utils/token';
+import { useRouter } from 'expo-router'; // Import the router for navigation
 
 export default function CustomHeader() {
-  const [placeholderIndex, setPlaceholderIndex] = useState(0); // Tracks the index of the current placeholder
-  const translateYAnim = useRef(new Animated.Value(0)).current; // Animation for sliding up and down
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const translateYAnim = useRef(new Animated.Value(0)).current;
+  const router = useRouter(); // Initialize the router for navigation
 
   const placeholderOptions = [
     "Search sweets",
@@ -17,48 +20,47 @@ export default function CustomHeader() {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      // Start slide-up animation
       Animated.timing(translateYAnim, {
-        toValue: -20, // Move the text up by 50 pixels
-        duration: 500, // Duration of the slide-up
+        toValue: -20,
+        duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        // Once the first text slides up, update the placeholder
         setPlaceholderIndex((prevIndex) => (prevIndex + 1) % placeholderOptions.length);
-
-        // Reset the position of the text for the slide-in effect
-        translateYAnim.setValue(15); // Start the next text from below (50 pixels down)
-
-        // Start slide-in animation
+        translateYAnim.setValue(15);
         Animated.timing(translateYAnim, {
-          toValue: 0, // Slide the new text up to its original position
-          duration: 500, // Duration of the slide-in
+          toValue: 0,
+          duration: 500,
           useNativeDriver: true,
         }).start();
       });
-    }, 3000); // Update placeholder every 3 seconds
+    }, 3000);
 
-    // Cleanup the interval when component unmounts
     return () => clearInterval(intervalId);
   }, [translateYAnim]);
+
+  const handleFetchUserDetails = async () => {
+    
+    router.push("/user/current-user"); // Navigate to the user details page using router.push
+  };
 
   return (
     <View>
       <View style={styles.mainContainer}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <View>
             <Text>Grocery app</Text>
             <Text style={{ fontWeight: "bold" }}>Delivery in 20 Min</Text>
           </View>
 
-          <Octicons name="feed-person" size={30} color="black" />
+          {/* ✅ Make top-right person icon clickable */}
+          <TouchableOpacity onPress={handleFetchUserDetails}>
+            <Octicons name="feed-person" size={30} color="black" />
+          </TouchableOpacity>
         </View>
 
         {/* Search Bar Section */}
         <View style={styles.searchBarContainer}>
           <Ionicons name="search" size={24} color="black" />
-          
-          {/* Animated Text with Slide-Up and Slide-Down Effect */}
           <Animated.Text style={[styles.searchText, { transform: [{ translateY: translateYAnim }] }]}>
             {placeholderOptions[placeholderIndex]}
           </Animated.Text>
@@ -83,8 +85,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   searchText: {
-    marginLeft: 10, // Spacing between the icon and the text
-    fontSize: 16, // Adjust text size
-    color: "gray", // Placeholder-like color for the text
+    marginLeft: 10,
+    fontSize: 16,
+    color: "gray",
   },
 });

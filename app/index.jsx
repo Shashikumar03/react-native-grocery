@@ -7,7 +7,7 @@ export default function Index() {
 
   if (!isLoaded) return null;
   console.log(`shashi is checking ${isSignedIn}`)
-  console.log(`Checking isSignedIn in Index: ${isSignedIn}`);
+  
 
   return <Redirect href={isSignedIn ? '/home' : '/login'} />;
 }

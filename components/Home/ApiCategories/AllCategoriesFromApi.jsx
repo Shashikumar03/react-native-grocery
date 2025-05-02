@@ -13,6 +13,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { getAllCategories } from '../../../service/category/GetAllCategories';
 import { addProductToCart } from '../../../service/cart/AddProductToCart';
+import { getUserId } from '../../../utils/token';
 
 export default function AllCategoriesFromApi() {
   const [allCategories, setAllCategories] = useState([]);
@@ -62,8 +63,8 @@ export default function AllCategoriesFromApi() {
       Alert.alert('Invalid quantity', 'Please enter a valid quantity.');
       return;
     }
-
-    const response = await addProductToCart(selectedProductId, qty); // Add to cart
+    const userId=await getUserId()
+    const response = await addProductToCart(userId,selectedProductId, qty); // Add to cart
     if (response.success) {
       Alert.alert('Success', 'Item added to cart successfully.');
     } else {

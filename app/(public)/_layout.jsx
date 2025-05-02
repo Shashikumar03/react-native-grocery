@@ -4,13 +4,13 @@ import { Redirect, Stack } from 'expo-router';
 
 const PublicLayout = () => {
 //   const { isSignedIn } = useAuth()
-isSignedIn=true
+// isSignedIn=true
 
-  console.log("shashi", isSignedIn)
-  if (isSignedIn) {
-    return <Redirect href={'/home'} />
-    // <Redirect
-  }
+  // console.log("shashi", isSignedIn)
+  // if (isSignedIn) {
+  //   return <Redirect href={'/home'} />
+  //   // <Redirect
+  // }
   return (
     <Stack
       screenOptions={{
