@@ -1,32 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
-import axios from 'axios';
+import { useRouter } from 'expo-router';
+import { Buffer } from 'buffer';
+
 import { getBaseUrl } from '../../constants/Baseurl';
 import { getPaymentOrder } from '../../service/rozarpay/rozerpay';
-import { useRouter } from 'expo-router'; // Importing useRouter from expo-router
+import { updatePayment } from '../../service/payment/UpdatePayment';
 
 export default function RazorpayPaymentScreen({ route }) {
     const router = useRouter();
-    const backendUrl = `${getBaseUrl()}/api/place-order/1`;  // Assuming this endpoint creates an order
-    const razorpayKey = 'rzp_test_O8N5m4YSInMmSC'; // Your Razorpay test key
+    const razorpayKey = 'rzp_test_O8N5m4YSInMmSC';
 
     const [paymentUrl, setPaymentUrl] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [rozerpayId, setRozerpayId] = useState(null);
 
     useEffect(() => {
-        // Fetch order details from backend
         const createOrder = async () => {
             try {
-                const response = await getPaymentOrder();  // Assuming getPaymentOrder() makes a call to backend
+                const response = await getPaymentOrder();
                 if (response.status) {
-                    console.log("Successfully order ID is created:", response.data);
-
-                    // Extract Razorpay Order ID and Payment Amount
                     const { rozerpayId, paymentAmount } = response.data.paymentDto;
-                    const amount = paymentAmount * 100;  // Convert to paise (smallest currency unit)
+                    const amount = paymentAmount * 100;
+                    setRozerpayId(rozerpayId);
 
-                    // Generate Razorpay checkout options HTML
                     const razorpayHTML = `
                         <!DOCTYPE html>
                         <html>
@@ -44,9 +42,9 @@ export default function RazorpayPaymentScreen({ route }) {
                                   image: "https://i.imgur.com/3g7nmJC.jpg",
                                   order_id: "${rozerpayId}",
                                   prefill: {
-                                    name: "John Doe",
-                                    email: "john.doe@example.com",
-                                    contact: "9999999999"
+                                    name: "shashi kushwaha",
+                                    email: "shashikumarkushwaha3@gmail.com",
+                                    contact: "7073052300"
                                   },
                                   theme: {
                                     color: "#53a20e"
@@ -64,7 +62,10 @@ export default function RazorpayPaymentScreen({ route }) {
                                   modal: {
                                     ondismiss: function () {
                                       window.ReactNativeWebView.postMessage(
-                                        JSON.stringify({ success: false, error: "Payment Cancelled by User" })
+                                        JSON.stringify({
+                                          success: false,
+                                          error: "Payment Cancelled by User"
+                                        })
                                       );
                                     }
                                   }
@@ -80,11 +81,10 @@ export default function RazorpayPaymentScreen({ route }) {
                         </html>
                     `;
 
-                    // Set the Razorpay checkout HTML to be loaded in the WebView
-                    setPaymentUrl(`data:text/html;base64,${btoa(razorpayHTML)}`);
+                    const base64Html = Buffer.from(razorpayHTML).toString('base64');
+                    setPaymentUrl(`data:text/html;base64,${base64Html}`);
                     setIsLoading(false);
                 } else {
-                    console.log(response.data);
                     Alert.alert('Error', 'Failed to create order. Please try again.');
                     setIsLoading(false);
                 }
@@ -96,22 +96,47 @@ export default function RazorpayPaymentScreen({ route }) {
         };
 
         createOrder();
-    }, [backendUrl]);
+    }, []);
 
-    const handleWebViewMessage = (event) => {
-        const data = JSON.parse(event.nativeEvent.data);
-        if (data.success) {
-            Alert.alert('Payment Successful', `Payment ID: ${data.payment_id}`, [
-                {
-                    text: 'OK',
-                    onPress: () => {
-                        // Navigate to the home page after payment success
-                        router.push('/home'); // Replace 'Home' with your home screen's name
-                    }
+    const updatePaymentMethod = async (paymentId, paymentStatus) => {
+        try {
+            if (!rozerpayId || !paymentId) return;
+            await updatePayment(rozerpayId, paymentStatus, paymentId);
+        } catch (err) {
+            console.error("Error updating payment status:", err);
+        }
+    };
+
+    const handleWebViewMessage = async (event) => {
+        try {
+            const data = JSON.parse(event.nativeEvent.data);
+
+            if (data.success) {
+                console.log("Payment successful:", data);
+                await updatePaymentMethod(data.payment_id, "COMPLETED");
+                Alert.alert('Payment Successful', `Payment ID: ${data.payment_id}`, [
+                    {
+                        text: 'OK',
+                        onPress: () => router.push('/home'),
+                    },
+                ]);
+            } else {
+                console.log("Payment failed or cancelled:", data);
+                
+                if (data.payment_id) {
+                    await updatePaymentMethod(data.payment_id, "FAILED");
                 }
-            ]);
-        } else {
-            Alert.alert('Payment Failed', data.error || 'Unknown error occurred.');
+
+                const message = data.error || 'Payment was cancelled or failed.';
+                Alert.alert('Payment Failed', message, [
+                    {
+                        text: 'OK',
+                        onPress: () => router.push('/home'),
+                    },
+                ]);
+            }
+        } catch (e) {
+            console.error('Failed to handle WebView message:', e);
         }
     };
 
