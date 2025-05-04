@@ -53,6 +53,15 @@ export default function Register() {
       console.log("result of send otp: ", result.data);
 
       if (result.success) {
+        // Clear fields after successful OTP sending
+        setForm({
+          name: '',
+          email: '',
+          password: '',
+          address: '',
+          role: 'CUSTOMER',
+          phoneNumber: '',
+        });
         router.push({
           pathname: '/otp-verification',
           params: { formData: JSON.stringify(updatedForm) },
