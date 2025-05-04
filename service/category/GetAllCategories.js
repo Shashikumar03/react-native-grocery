@@ -6,7 +6,7 @@ export const getAllCategories = async () => {
     
         const url = `${getBaseUrl()}/api/category/all`;
         const response = await axios.get(url);
-        // console.log(response.data)
+        console.log("get all category api response",response.data)
         return {
             success: true,
             data: response.data,

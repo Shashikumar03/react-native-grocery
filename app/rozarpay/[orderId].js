@@ -113,7 +113,7 @@ export default function RazorpayPaymentScreen({ route }) {
 
             if (data.success) {
                 console.log("Payment successful:", data);
-                await updatePaymentMethod(data.payment_id, "COMPLETED");
+                // await updatePaymentMethod(data.payment_id, "COMPLETED");
                 Alert.alert('Payment Successful', `Payment ID: ${data.payment_id}`, [
                     {
                         text: 'OK',
@@ -123,9 +123,9 @@ export default function RazorpayPaymentScreen({ route }) {
             } else {
                 console.log("Payment failed or cancelled:", data);
                 
-                if (data.payment_id) {
-                    await updatePaymentMethod(data.payment_id, "FAILED");
-                }
+                // if (data.payment_id) {
+                //     await updatePaymentMethod(data.payment_id, "FAILED");
+                // }
 
                 const message = data.error || 'Payment was cancelled or failed.';
                 Alert.alert('Payment Failed', message, [

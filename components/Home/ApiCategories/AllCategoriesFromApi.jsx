@@ -21,7 +21,7 @@ export default function AllCategoriesFromApi() {
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [quantity, setQuantity] = useState('');
 
-  useEffect(() => {
+  useEffect( () => {
     getAllCategory();
   }, []);
 

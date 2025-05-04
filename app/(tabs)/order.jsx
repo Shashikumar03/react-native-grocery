@@ -21,7 +21,7 @@ export default function Order() {
   // Render a single order item
   const renderOrderItem = ({ item }) => (
     <View style={styles.orderContainer}>
-      <Text style={styles.orderIdText}>Order ID: {item.orderId}</Text>
+      <Text style={styles.orderIdText}>Order NO: {item.orderId}</Text>
       <Text style={styles.orderStatus}>Status: {item.orderStatus}</Text>
       <Text style={styles.orderTime}>Order Time: {new Date(item.orderTime).toLocaleString()}</Text>
       
@@ -37,7 +37,18 @@ export default function Order() {
 
       <Text style={styles.sectionHeader}>Payment:</Text>
       <Text style={styles.paymentStatus}>Payment Status: {item.paymentDto?.paymentStatus}</Text>
-      <Text style={styles.paymentAmount}>Payment Amount: RS {item.paymentDto?.paymentAmount?.toFixed(2)}</Text>
+      <Text style={styles.paymentAmount}>Payment Amount: ₹  {item.paymentDto?.paymentAmount?.toFixed(2)}</Text>
+      {item.paymentDto?.refundAmount > 0 && (
+        <>
+  <Text style={styles.paymentAmount}>
+    Refund Amount: ₹ {item.paymentDto.refundAmount.toFixed(2)}
+  </Text>
+  <Text style={styles.deductionNote}>
+      Note: 10% of your total amount has been deducted as per refund policy.
+    </Text>
+  </>
+  
+)}
 
       <Text style={styles.sectionHeader}>Delivery:</Text>
       <Text style={styles.deliveryStatus}>Delivery Status: {item.deliveryDto?.deliveryStatus}</Text>
@@ -132,4 +143,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'orange',
   },
+  deductionNote: {
+    fontSize: 12,
+    color: 'gray',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  
 });
