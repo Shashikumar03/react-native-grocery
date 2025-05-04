@@ -34,6 +34,23 @@ export default function OtpVerification() {
     }
   };
 
+  const handleOtpKeyPress = (e, index) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      if (otp[index] === '') {
+        if (index > 0) {
+          otpRefs.current[index - 1].current.focus();
+          const newOtp = [...otp];
+          newOtp[index - 1] = '';
+          setOtp(newOtp);
+        }
+      } else {
+        const newOtp = [...otp];
+        newOtp[index] = '';
+        setOtp(newOtp);
+      }
+    }
+  };
+
   const handleVerify = async () => {
     const otpString = otp.join('');
     if (!otpString || otpString.length !== 6) {
@@ -101,6 +118,7 @@ export default function OtpVerification() {
             keyboardType="numeric"
             value={digit}
             onChangeText={(value) => handleOtpChange(value, index)}
+            onKeyPress={(e) => handleOtpKeyPress(e, index)}
             ref={otpRefs.current[index]}
             autoFocus={index === 0}
           />
