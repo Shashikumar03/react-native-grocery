@@ -63,3 +63,49 @@ export async function removeUserId() {
     console.error("Error removing user ID:", error);
   }
 }
+
+
+export async function saveDeliveryAddressId(addressId) {
+  if (!addressId) {
+    console.error("Invalid address ID:", addressId);
+    return;
+  }
+  try {
+    await SecureStore.setItemAsync('deliveryAddressId', addressId.toString());
+    console.log("Delivery Address ID saved successfully");
+  } catch (error) {
+    console.error("Error saving delivery address ID:", error);
+  }
+}
+
+export async function getDeliveryAddressId() {
+  try {
+    return await SecureStore.getItemAsync('deliveryAddressId');
+  } catch (error) {
+    console.error("Error retrieving delivery address ID:", error);
+    return null;
+  }
+}
+
+export async function removeDeliveryAddressId() {
+  try {
+    await SecureStore.deleteItemAsync('deliveryAddressId');
+  } catch (error) {
+    console.error("Error removing delivery address ID:", error);
+  }
+}
+
+// import * as SecureStore from 'expo-secure-store';
+
+export const clearSession = async () => {
+  await SecureStore.deleteItemAsync('userId');
+  await SecureStore.deleteItemAsync('deliveryAddressId');
+  await SecureStore.deleteItemAsync("jwt")
+  // Add any other stored keys like tokens
+
+};
+
+
+// await SecureStore.setItemAsync(`addressId_${userId}`, addressId);
+// const userId = await getUserId();
+// const addressId = await SecureStore.getItemAsync(`addressId_${userId}`);

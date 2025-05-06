@@ -1,10 +1,10 @@
 import axios from "axios";
 import { getBaseUrl } from "../../constants/Baseurl";
 
-export const getPaymentOrder = async () => {
+export const getPaymentOrder = async (userId,addressId ) => {
     try {
-      const userId=1
-      const addressId=3
+      // const userId=1
+      // const addressId=3
       const url = `${getBaseUrl()}/api/place-order/${userId}/${addressId}`;
       const response = await axios.post(url)
       // console.log(response.data)

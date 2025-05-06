@@ -23,9 +23,11 @@ export default function Cart() {
   const [allCartItems, setAllCartItems] = useState([]);
   const [refreshing, setRefreshing] = useState(false); // State to manage the refresh indicator
   const router = useRouter();
+   
 
   const getCartItemMethod = async () => {
-    const response = await getCartItems();
+    const userId = await getUserId()
+    const response = await getCartItems(userId);
     if (response.success) {
       const sortedItems = response.data.cartItemsDto.sort((a, b) => a.cartItemId - b.cartItemId);
       setAllCartItems({

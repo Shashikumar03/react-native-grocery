@@ -1,21 +1,20 @@
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import Octicons from '@expo/vector-icons/Octicons';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { getToken } from '../../utils/token';
-import { useRouter } from 'expo-router'; // Import the router for navigation
+import { useRouter } from 'expo-router';
 
 export default function CustomHeader() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const translateYAnim = useRef(new Animated.Value(0)).current;
-  const router = useRouter(); // Initialize the router for navigation
+  const router = useRouter();
 
   const placeholderOptions = [
-    "Search sweets",
-    "Search eggs",
-    "Search paneer",
-    "Search oil",
-    "Search apples"
+    "sweet",
+    "egg",
+    "paneer",
+    "oil",
+    "apples"
   ];
 
   useEffect(() => {
@@ -38,33 +37,39 @@ export default function CustomHeader() {
     return () => clearInterval(intervalId);
   }, [translateYAnim]);
 
-  const handleFetchUserDetails = async () => {
-    
-    router.push("/user/current-user"); // Navigate to the user details page using router.push
+  const handleFetchUserDetails = () => {
+    router.push("/user/current-user");
+  };
+
+  const handleSearchPress = () => {
+    const query = placeholderOptions[placeholderIndex];
+    router.push({ pathname: "/product//search", params: { query } });
   };
 
   return (
     <View>
       <View style={styles.mainContainer}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        {/* Top Header */}
+        <View style={styles.headerTop}>
           <View>
-            <Text>Grocery app</Text>
-            <Text style={{ fontWeight: "bold" }}>Delivery in 20 Min</Text>
+            <Text style={styles.appName}>Grocery app</Text>
+            <Text style={styles.deliveryInfo}>Delivery in 20 Min</Text>
           </View>
 
-          {/* ✅ Make top-right person icon clickable */}
           <TouchableOpacity onPress={handleFetchUserDetails}>
             <Octicons name="feed-person" size={30} color="black" />
           </TouchableOpacity>
         </View>
 
-        {/* Search Bar Section */}
-        <View style={styles.searchBarContainer}>
-          <Ionicons name="search" size={24} color="black" />
-          <Animated.Text style={[styles.searchText, { transform: [{ translateY: translateYAnim }] }]}>
-            {placeholderOptions[placeholderIndex]}
-          </Animated.Text>
-        </View>
+        {/* Search Bar */}
+        <TouchableOpacity onPress={handleSearchPress}>
+          <View style={styles.searchBarContainer}>
+            <Ionicons name="search" size={24} color="black" />
+            <Animated.Text style={[styles.searchText, { transform: [{ translateY: translateYAnim }] }]}>
+              {placeholderOptions[placeholderIndex]}
+            </Animated.Text>
+          </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -75,6 +80,18 @@ const styles = StyleSheet.create({
     backgroundColor: "lightblue",
     padding: 10,
     borderRadius: 10,
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  appName: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  deliveryInfo: {
+    fontWeight: "bold",
   },
   searchBarContainer: {
     marginTop: 10,

@@ -1,12 +1,14 @@
 import { View, Text, StyleSheet, FlatList, StatusBar } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { getOrderHistory } from '../../service/order/OrderHistory';
+import { getUserId } from '../../utils/token';
 
 export default function Order() {
   const [orderHistory, setOrderHistory] = useState([]);
 
   const getUserOrderHistory = async () => {
-    const response = await getOrderHistory(1); // Assuming userId is 5 for example
+    const userId=await getUserId()
+    const response = await getOrderHistory(userId); // Assuming userId is 5 for example
     if (response.success) {
       // Sort orders by orderId in reverse order
       const sortedOrders = response.data.sort((a, b) => b.orderId - a.orderId);
