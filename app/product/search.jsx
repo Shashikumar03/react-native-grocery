@@ -32,12 +32,10 @@ export default function SearchScreen() {
     const initialize = async () => {
       await fetchCartItems();
       if (searchTerm) fetchResults();
-     
     };
     initialize();
-    
   }, []);
-  console.log("initial card item which is already added is: ",quantities )
+
   useEffect(() => {
     if (searchTerm) fetchResults();
   }, [searchTerm]);
@@ -82,7 +80,7 @@ export default function SearchScreen() {
     const userId = await getUserId();
     const response = await addProductToCart(userId, productId, newQty);
     if (response.success) {
-      fetchCartItems(); // Sync with cart after update
+      fetchCartItems();
     } else {
       console.error("Failed to update cart", response.data);
     }
@@ -126,24 +124,33 @@ export default function SearchScreen() {
           <Text style={styles.originalPrice}>{originalPrice} ₹</Text>
         </View>
 
-        <View style={styles.cartControls}>
-          <TouchableOpacity
-            style={[styles.button, qty <= 0 && styles.disabledButton]}
-            disabled={qty <= 0}
-            onPress={() => handleQuantityChange(item.id, -1)}
-          >
-            <Text style={styles.buttonText}>−</Text>
-          </TouchableOpacity>
+        {qty > 0 ? (
+          <View style={styles.cartControls}>
+            <TouchableOpacity
+              style={[styles.button, qty <= 0 && styles.disabledButton]}
+              disabled={qty <= 0}
+              onPress={() => handleQuantityChange(item.id, -1)}
+            >
+              <Text style={styles.buttonText}>−</Text>
+            </TouchableOpacity>
 
-          <Text style={styles.quantityText}>{qty}</Text>
+            <Text style={styles.quantityText}>{qty}</Text>
 
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => handleQuantityChange(item.id, 1)}
+            >
+              <Text style={styles.buttonText}>＋</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
           <TouchableOpacity
-            style={styles.button}
+            style={[styles.button, { alignSelf: 'flex-start', marginTop: 10 }]}
             onPress={() => handleQuantityChange(item.id, 1)}
           >
-            <Text style={styles.buttonText}>＋</Text>
+            <Text style={styles.buttonText}>Add</Text>
           </TouchableOpacity>
-        </View>
+        )}
       </View>
     );
   };
@@ -305,7 +312,8 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 20,
+    fontSize: 16,
+    fontWeight: '600',
   },
   quantityText: {
     fontSize: 16,
