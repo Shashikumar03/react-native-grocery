@@ -23,6 +23,7 @@ import { getDeliveryAddressId, getUserId } from '../../utils/token';
 import { applyPromoCode } from '../../service/promoCode/applyPromoCode';
 import { getDeliveryAddressByItsId } from '../../service/deliveryAddress/GetDeliveryAddressByDeliveryId';
 import { getPaymentOrder } from '../../service/rozarpay/rozerpay';
+import { applyPromoCodeDiscount } from '../../service/promoCode/applyPromoCodeDiscount';
 
 export default function Cart() {
   const [allCartItems, setAllCartItems] = useState([]);
@@ -30,6 +31,7 @@ export default function Cart() {
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [appliedPromo, setAppliedPromo] = useState(null);
+  const [idOfCart, setIdOfCart]= useState(null)
   const [selectedAddress, setSelectedAddresss] = useState();
   const [paymentMode, setPaymentMode] = useState('online'); // 'online' or 'cod'
   const router = useRouter();
@@ -39,6 +41,8 @@ export default function Cart() {
     const response = await getCartItems(userId);
     if (response.success) {
       const sortedItems = response.data.cartItemsDto.sort((a, b) => a.cartItemId - b.cartItemId);
+      const cartIdOfUser=response.data.cartId
+      setIdOfCart(cartIdOfUser)
       setAllCartItems({
         ...response.data,
         cartItemsDto: sortedItems,
@@ -125,9 +129,19 @@ export default function Cart() {
       ToastAndroid.show(response.data.message, ToastAndroid.SHORT);
       setDiscount(response.data.discountAmount);
       setAppliedPromo(response.data.promoCode);
+      await applyPromoCodeDiscount(idOfCart, response.data.discountAmount)
     } else {
       ToastAndroid.show(response.data.message, ToastAndroid.LONG);
     }
+  };
+  const handleRevomePromoCode= async()=>{
+
+      setPromoCode('');
+      setDiscount(0);
+      setAppliedPromo(null);
+      await applyPromoCodeDiscount(idOfCart, 0)
+
+    
   };
 
   const doPayment = async () => {
@@ -212,11 +226,7 @@ export default function Cart() {
             Applied "{appliedPromo}" - Discount ₹{discount.toFixed(2)}
           </Text>
           <TouchableOpacity
-            onPress={() => {
-              setPromoCode('');
-              setDiscount(0);
-              setAppliedPromo(null);
-            }}
+            onPress={handleRevomePromoCode}
             style={styles.removePromoButton}
           >
             <Text style={styles.removePromoText}>Remove Promo Code</Text>

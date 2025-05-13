@@ -1,12 +1,23 @@
-import { View, Text, StyleSheet, FlatList, StatusBar, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  StatusBar,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { getOrderHistory } from '../../service/order/OrderHistory';
 import { getUserId } from '../../utils/token';
+import { cancelUserOrder } from '../../service/order/cancelUserOrder';
 
 export default function Order() {
   const [orderHistory, setOrderHistory] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [cancellingOrderId, setCancellingOrderId] = useState(null);
 
   const getUserOrderHistory = async () => {
     setRefreshing(true);
@@ -17,6 +28,41 @@ export default function Order() {
       setOrderHistory(sortedOrders);
     }
     setRefreshing(false);
+  };
+
+  const cancelOrder = async (orderId) => {
+    if (!orderId) return;
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order?',
+      [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes',
+          onPress: async () => {
+            setCancellingOrderId(orderId);
+            try {
+              const res = await cancelUserOrder(orderId)
+              if (res.success) {
+                alert('Order cancelled successfully.');
+                await getUserOrderHistory();
+              } else {
+                console.log(res.data)
+                alert('Failed to cancel order.');
+              }
+            } catch (error) {
+              alert('Error cancelling order.');
+            } finally {
+              setCancellingOrderId(null);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   useFocusEffect(
@@ -43,20 +89,47 @@ export default function Order() {
       <Text style={styles.sectionHeader}>Payment:</Text>
       <Text style={styles.paymentStatus}>Payment Mode: {item.paymentDto?.paymentMode}</Text>
       <Text style={styles.paymentStatus}>Payment Status: {item.paymentDto?.paymentStatus}</Text>
-      <Text style={styles.paymentAmount}>Payment Amount: ₹ {item.paymentDto?.paymentAmount?.toFixed(2)}</Text>
+      <Text style={styles.paymentAmount}>
+        Payment Amount: ₹ {item.paymentDto?.paymentAmount?.toFixed(2)}
+      </Text>
+
       {item.paymentDto?.refundAmount > 0 && (
         <>
-          <Text style={styles.paymentAmount}>
+        {/* i will use this commented line in future */}
+          {/* <Text style={styles.paymentAmount}>
             Refund Amount: ₹ {item.paymentDto.refundAmount.toFixed(2)}
+          </Text> */}
+          <Text style={styles.paymentAmount}>
+            note: {item.paymentDto.paymentNotes}
           </Text>
-          <Text style={styles.deductionNote}>
+          {/* <Text style={styles.deductionNote}>
             Note: 10% of your total amount has been deducted as per refund policy.
-          </Text>
+          </Text> */}
         </>
       )}
 
       <Text style={styles.sectionHeader}>Delivery:</Text>
       <Text style={styles.deliveryStatus}>Delivery Status: {item.deliveryDto?.deliveryStatus}</Text>
+
+      {/* Cancel Button */}
+      {item.orderStatus === 'PENDING' && (
+        <View style={{ marginTop: 10 }}>
+          <TouchableOpacity
+            onPress={() => cancelOrder(item.orderId)}
+            disabled={cancellingOrderId === item.orderId}
+            style={{
+              backgroundColor: cancellingOrderId === item.orderId ? 'gray' : 'red',
+              padding: 10,
+              borderRadius: 5,
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>
+              {cancellingOrderId === item.orderId ? 'Cancelling...' : 'Cancel Order'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
