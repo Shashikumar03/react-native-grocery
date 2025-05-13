@@ -7,6 +7,7 @@ export const getAllDeliveryAddressOfUser = async (userId) => {
     try{
         const url = `${getBaseUrl()}/api/delivery-address/getAll/${userId}`;
         const response = await axios.get(url); 
+        console.log("shashi address",response.data)
 
         return {
             success: true,

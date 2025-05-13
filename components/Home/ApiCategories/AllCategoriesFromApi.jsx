@@ -21,22 +21,30 @@ export default function AllCategoriesFromApi() {
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [quantity, setQuantity] = useState('');
 
-  useEffect( () => {
+  // Fetch categories on component mount
+  useEffect(() => {
     getAllCategory();
   }, []);
 
+  // Fetch all categories from API
   const getAllCategory = async () => {
-    const response = await getAllCategories();
-    if (response.success) {
-      setAllCategories(response.data);
-      console.log(response.data); // Log the data directly
-    } else {
-      console.log('Error occurred');
+    try {
+      const response = await getAllCategories();
+      if (response.success) {
+        setAllCategories(response.data);
+        console.log(response.data);
+      } else {
+        Alert.alert('Error', 'Failed to load categories. Please try again.');
+        console.log('Error occurred:', response.error);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      console.error('getAllCategory error:', error);
     }
   };
 
+  // Show confirmation alert before adding to cart
   const addProductToCartHandler = (itemId) => {
-    // Show confirmation dialog
     Alert.alert(
       'Add to Cart',
       'Are you sure you want to add this item to the cart?',
@@ -49,59 +57,78 @@ export default function AllCategoriesFromApi() {
         {
           text: 'Yes',
           onPress: () => {
-            setSelectedProductId(itemId); // Set the selected product ID
-            setModalVisible(true); // Show the modal for quantity input
+            setSelectedProductId(itemId);
+            setModalVisible(true);
           },
         },
       ]
     );
   };
 
+  // Handle adding product to cart
   const handleAddToCart = async () => {
     const qty = parseInt(quantity, 10);
     if (isNaN(qty) || qty <= 0) {
       Alert.alert('Invalid quantity', 'Please enter a valid quantity.');
       return;
     }
-    const userId=await getUserId()
-    const response = await addProductToCart(userId,selectedProductId, qty); // Add to cart
-    if (response.success) {
-      Alert.alert('Success', 'Item added to cart successfully.');
-    } else {
-      Alert.alert('Error', 'Failed to add item to cart.');
+    try {
+      const userId = await getUserId();
+      const response = await addProductToCart(userId, selectedProductId, qty);
+      if (response.success) {
+        Alert.alert('Success', 'Item added to cart successfully.');
+      } else {
+        Alert.alert('Error', 'Failed to add item to cart.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      console.error('addProductToCart error:', error);
     }
-    setQuantity(''); // Clear quantity
-    setModalVisible(false); // Hide the modal
+    setQuantity('');
+    setModalVisible(false);
   };
 
+  // Render individual product card
   const renderProduct = ({ item }) => (
     <View style={styles.productCard}>
-      <TouchableOpacity onPress={() => addProductToCartHandler(item.id)} style={styles.productCardContent}>
+      <TouchableOpacity
+        onPress={() => addProductToCartHandler(item.id)}
+        style={styles.productCardContent}
+        accessibilityLabel={`Add ${item.name} to cart`}
+        accessibilityRole="button"
+      >
         <Image
-          source={{ uri: item.imageUrl }}
+          source={{ uri: item.imageUrl ||"www.modi.com" }}
           style={styles.productImage}
           resizeMode="cover"
         />
         <View style={styles.productDetails}>
-          <Text style={styles.productName}>{item.name}</Text>
-          <Text style={styles.productPrice}>RS {item.price.toFixed(2)}</Text>
+          <Text style={styles.productName} numberOfLines={2}>
+            {item.name}
+          </Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.productPrice}>Rs {item.price.toFixed(2)}</Text>
+            <Text style={styles.productUnit}>/{item?.unit || 'unit'}</Text>
+          </View>
         </View>
       </TouchableOpacity>
     </View>
   );
 
+  // Render category with products
   const renderCategory = ({ item }) => (
     <View style={styles.categoryContainer}>
       <Text style={styles.categoryTitle}>{item.name}</Text>
-      <Text style={styles.categoryDescription}>{item.description}</Text>
-
+      <Text style={styles.categoryDescription} numberOfLines={2}>
+        {item.description || 'No description available'}
+      </Text>
       <FlatList
-        data={item.productsDto} // Access the products for the category
+        data={item.productsDto}
         keyExtractor={(product) => product.id.toString()}
         renderItem={renderProduct}
-        horizontal // Display products horizontally
-        showsHorizontalScrollIndicator={false} // Hide scroll indicator
-        contentContainerStyle={styles.productList} // Style for the horizontal product list
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.productList}
       />
     </View>
   );
@@ -112,10 +139,9 @@ export default function AllCategoriesFromApi() {
         data={allCategories}
         keyExtractor={(category) => category.id.toString()}
         renderItem={renderCategory}
-        showsVerticalScrollIndicator={false} // Hide vertical scroll indicator
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.categoryList}
       />
-
-      {/* Modal for Quantity Input */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -128,107 +154,150 @@ export default function AllCategoriesFromApi() {
             <TextInput
               style={styles.input}
               placeholder="Quantity"
+              placeholderTextColor="#999"
               keyboardType="numeric"
               value={quantity}
-              onChangeText={setQuantity}
+              onChangeText={(text) => {
+                if (/^\d*$/.test(text)) setQuantity(text);
+              }}
+              accessibilityLabel="Quantity input"
             />
-            <Button title="Add to Cart" onPress={handleAddToCart} />
-            <Button title="Cancel" onPress={() => setModalVisible(false)} />
+            <View style={styles.modalButtonContainer}>
+              <Button title="Add to Cart" onPress={handleAddToCart} />
+              <Button title="Cancel" onPress={() => setModalVisible(false)} />
+            </View>
           </View>
         </View>
       </Modal>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
-    flex: 1, // Ensure container takes full height
-    padding: 20,
+    flex: 1,
+    padding: 2,
+    backgroundColor: '#f5f5f5', // Light gray background for main container
+  },
+  categoryList: {
+    paddingBottom: 20,
   },
   categoryContainer: {
-    marginBottom: 20,
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: '#fafafa', // Off-white for category box
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   categoryTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: 'bold',
+    color: '#333',
     marginBottom: 5,
   },
   categoryDescription: {
-    fontSize: 16,
-    color: 'gray',
+    fontSize: 12,
+    color: '#666',
     marginBottom: 10,
   },
   productList: {
-    paddingVertical: 10, // Add vertical padding for better spacing
+    paddingVertical: 5,
   },
   productCard: {
-    backgroundColor: '#fff', // White background for the card
-    borderRadius: 10, // Rounded corners
-    padding: 10, // Padding inside the card
-    marginRight: 15, // Space between cards in the horizontal list
-    shadowColor: '#000', // Shadow color for iOS
-    shadowOffset: { width: 0, height: 2 }, // Shadow offset for iOS
-    shadowOpacity: 0.1, // Shadow opacity for iOS
-    shadowRadius: 5, // Shadow blur radius for iOS
-    elevation: 3, // Shadow for Android
-    borderWidth: 1, // Add a border
-    borderColor: '#e0e0e0', // Light gray border color
-    width: 130, // Set a fixed width for product cards
+    backgroundColor: '#ffffff', // Pure white for product box
+    borderRadius: 8,
+    padding: 10,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    width: 130,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   productCardContent: {
     alignItems: 'center',
   },
   productImage: {
-    width: 60, // Image width
-    height: 60, // Image height
-    borderRadius: 8, // Rounded corners for the image
-    marginBottom: 10, // Space between the image and product details
+    width: 80,
+    height: 70,
+    borderRadius: 6,
+    marginBottom: 5,
+    backgroundColor: '#f0f0f0',
   },
   productDetails: {
-    alignItems: 'center', // Center the text inside the card
+    alignItems: 'center',
   },
   productName: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
     textAlign: 'center',
-    marginBottom: 5, // Space between name and price
+    marginBottom: 3,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   productPrice: {
     fontSize: 12,
-    color: 'green',
+    fontWeight: '500',
+    color: '#2e7d32',
+  },
+  productUnit: {
+    fontSize: 10,
+    color: '#666',
+    marginLeft: 3,
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Background overlay
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    width: 300,
+    width: 280,
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#ffffff', // White for modal box
     borderRadius: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 3,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 20,
+    color: '#333',
+    marginBottom: 15,
   },
   input: {
     height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    marginBottom: 20,
     width: '100%',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 6,
     paddingHorizontal: 10,
+    marginBottom: 15,
+    fontSize: 14,
+    color: '#333',
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 10,
   },
 });

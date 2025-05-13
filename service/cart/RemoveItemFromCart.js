@@ -3,10 +3,10 @@ import { getBaseUrl } from "../../constants/Baseurl";
 
 export const removeItemFromCart = async (userId,productId) => {
     try {
-        console.log(userId,productId)
+        console.log("user and product id",userId,productId)
         const url = `${getBaseUrl()}/api/v1/carts/remove/${userId}/${productId}`;
         const response = await axios.put(url);
-        // console.log(response.data)
+        console.log(response.data)
 
         return {
             success: true,

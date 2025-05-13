@@ -40,7 +40,7 @@ export default function RazorpayPaymentScreen() {
         setUserId(storedUserId);
 
         // Step 2: Once IDs are available, create order
-        const response = await getPaymentOrder(storedUserId, addressId);
+        const response = await getPaymentOrder(storedUserId, addressId, "ONLINE");
 
         if (response.status) {
           const { rozerpayId, paymentAmount } = response.data.paymentDto;

@@ -1,56 +1,59 @@
-import { View, Text, StyleSheet, FlatList, StatusBar } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, StatusBar, RefreshControl } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { getOrderHistory } from '../../service/order/OrderHistory';
 import { getUserId } from '../../utils/token';
 
 export default function Order() {
   const [orderHistory, setOrderHistory] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   const getUserOrderHistory = async () => {
-    const userId=await getUserId()
-    const response = await getOrderHistory(userId); // Assuming userId is 5 for example
+    setRefreshing(true);
+    const userId = await getUserId();
+    const response = await getOrderHistory(userId);
     if (response.success) {
-      // Sort orders by orderId in reverse order
       const sortedOrders = response.data.sort((a, b) => b.orderId - a.orderId);
       setOrderHistory(sortedOrders);
     }
+    setRefreshing(false);
   };
 
-  useEffect(() => {
-    getUserOrderHistory();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      getUserOrderHistory();
+    }, [])
+  );
 
-  // Render a single order item
   const renderOrderItem = ({ item }) => (
     <View style={styles.orderContainer}>
       <Text style={styles.orderIdText}>Order NO: {item.orderId}</Text>
       <Text style={styles.orderStatus}>Status: {item.orderStatus}</Text>
       <Text style={styles.orderTime}>Order Time: {new Date(item.orderTime).toLocaleString()}</Text>
-      
+
       <Text style={styles.sectionHeader}>Items:</Text>
-      {/* Render the cart items */}
       {item.cartItemDto.map((cartItem, index) => (
         <View key={index} style={styles.cartItemContainer}>
           <Text style={styles.productName}>Product: {cartItem.productName}</Text>
-          <Text style={styles.productPrice}>Price: RS {cartItem.price.toFixed(2)}</Text>
+          <Text style={styles.productPrice}>Price: ₹ {cartItem.price.toFixed(2)}</Text>
           <Text style={styles.productQuantity}>Quantity: {cartItem.quantity}</Text>
         </View>
       ))}
 
       <Text style={styles.sectionHeader}>Payment:</Text>
+      <Text style={styles.paymentStatus}>Payment Mode: {item.paymentDto?.paymentMode}</Text>
       <Text style={styles.paymentStatus}>Payment Status: {item.paymentDto?.paymentStatus}</Text>
-      <Text style={styles.paymentAmount}>Payment Amount: ₹  {item.paymentDto?.paymentAmount?.toFixed(2)}</Text>
+      <Text style={styles.paymentAmount}>Payment Amount: ₹ {item.paymentDto?.paymentAmount?.toFixed(2)}</Text>
       {item.paymentDto?.refundAmount > 0 && (
         <>
-  <Text style={styles.paymentAmount}>
-    Refund Amount: ₹ {item.paymentDto.refundAmount.toFixed(2)}
-  </Text>
-  <Text style={styles.deductionNote}>
-      Note: 10% of your total amount has been deducted as per refund policy.
-    </Text>
-  </>
-  
-)}
+          <Text style={styles.paymentAmount}>
+            Refund Amount: ₹ {item.paymentDto.refundAmount.toFixed(2)}
+          </Text>
+          <Text style={styles.deductionNote}>
+            Note: 10% of your total amount has been deducted as per refund policy.
+          </Text>
+        </>
+      )}
 
       <Text style={styles.sectionHeader}>Delivery:</Text>
       <Text style={styles.deliveryStatus}>Delivery Status: {item.deliveryDto?.deliveryStatus}</Text>
@@ -60,12 +63,13 @@ export default function Order() {
   return (
     <View style={styles.mainContainer}>
       <Text style={styles.title}>Order History</Text>
-      
-      {/* FlatList to render orders */}
       <FlatList
         data={orderHistory}
         keyExtractor={(item) => item.orderId.toString()}
         renderItem={renderOrderItem}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={getUserOrderHistory} />
+        }
       />
     </View>
   );
@@ -151,5 +155,4 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 4,
   },
-  
 });

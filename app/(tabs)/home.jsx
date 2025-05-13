@@ -1,27 +1,40 @@
-import { View, Text, StyleSheet, StatusBar } from 'react-native'
-import React from 'react'
+import { View, StyleSheet, StatusBar, SafeAreaView, ScrollView } from 'react-native';
+import React from 'react';
 import CustomHeader from '../../components/Header/CustomHeader';
 import HomeCategory from '../../components/Home/HomeCategory';
 import AllCategoriesFromApi from '../../components/Home/ApiCategories/AllCategoriesFromApi';
 
-export default function home() {
-
+export default function Home() {
   return (
-    <View style={styles.center}>
-      {/* <Text>home</Text> */}
-      <CustomHeader/>
-      <HomeCategory/>
-      <AllCategoriesFromApi/>
-    </View>
-  )
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
+      
+      {/* Fixed Header & Category */}
+      <View style={styles.fixedTop}>
+        <CustomHeader />
+        <HomeCategory />
+      </View>
+
+      {/* Scrollable Content */}
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <AllCategoriesFromApi />
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    center: {
-      flex: 1,
-      marginTop:StatusBar.currentHeight, 
-      marginLeft:10,
-      marginRight:10
-    }
-   
-  });
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f2f2f2',
+  },
+  fixedTop: {
+    backgroundColor: '#f2f2f2',
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+  },
+  scrollContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 20,
+  },
+});

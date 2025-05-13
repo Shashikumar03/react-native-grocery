@@ -97,16 +97,16 @@ const styles = StyleSheet.create({
   },
   card: {
     alignItems: 'center', // Center align items in the card
-    marginRight: 30,
+    marginRight: 15,
   },
   title: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: 'bold',
-    marginTop: 5, // Space between the image and title
+    marginTop: 2, // Space between the image and title
   },
   image: {
-    width: 50, // Set a fixed width for the image
-    height: 50, // Set a fixed height for the image
+    width: 25, // Set a fixed width for the image
+    height:25, // Set a fixed height for the image
     borderRadius: 10,
   },
   underline: {

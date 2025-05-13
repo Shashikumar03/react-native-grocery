@@ -7,15 +7,13 @@ import { useRouter } from 'expo-router';
 export default function CustomHeader() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const translateYAnim = useRef(new Animated.Value(0)).current;
+  const backgroundAnim = useRef(new Animated.Value(0)).current;
+  const blinkAnim = useRef(new Animated.Value(1)).current;
   const router = useRouter();
 
-  const placeholderOptions = [
-    "sweet",
-    "egg",
-    "paneer",
-    "oil",
-    "apples"
-  ];
+  const placeholderOptions = ["onion", "egg", "milk", "paneer", "oil", "apple"];
+
+  const backgroundColors = ['#add8e6', '#90ee90', '#ffcccb', '#d3d3d3', '#f0e68c'];
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -33,9 +31,48 @@ export default function CustomHeader() {
         }).start();
       });
     }, 3000);
-
     return () => clearInterval(intervalId);
-  }, [translateYAnim]);
+  }, []);
+
+  // Animate background color loop
+  useEffect(() => {
+    let index = 0;
+    const animateBackground = () => {
+      Animated.timing(backgroundAnim, {
+        toValue: index + 1,
+        duration: 2000,
+        useNativeDriver: false,
+      }).start(() => {
+        index = (index + 1) % backgroundColors.length;
+        backgroundAnim.setValue(index);
+        animateBackground();
+      });
+    };
+    animateBackground();
+  }, []);
+
+  const backgroundColor = backgroundAnim.interpolate({
+    inputRange: backgroundColors.map((_, i) => i),
+    outputRange: backgroundColors,
+  });
+
+  // Blinking delivery text
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(blinkAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   const handleFetchUserDetails = () => {
     router.push("/user/current-user");
@@ -43,41 +80,37 @@ export default function CustomHeader() {
 
   const handleSearchPress = () => {
     const query = placeholderOptions[placeholderIndex];
-    router.push({ pathname: "/product//search", params: { query } });
+    router.push({ pathname: "/product/search", params: { query } });
   };
 
   return (
-    <View>
-      <View style={styles.mainContainer}>
-        {/* Top Header */}
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.appName}>Grocery app</Text>
-            <Text style={styles.deliveryInfo}>Delivery in 20 Min</Text>
-          </View>
-
-          <TouchableOpacity onPress={handleFetchUserDetails}>
-            <Octicons name="feed-person" size={30} color="black" />
-          </TouchableOpacity>
+    <Animated.View style={[styles.mainContainer, { backgroundColor }]}>
+      <View style={styles.headerTop}>
+        <View>
+          <Text style={styles.appName}>Bazaario app</Text>
+          <Animated.Text style={[styles.deliveryInfo, { opacity: blinkAnim }]}>
+            Delivery in 20 Min
+          </Animated.Text>
         </View>
-
-        {/* Search Bar */}
-        <TouchableOpacity onPress={handleSearchPress}>
-          <View style={styles.searchBarContainer}>
-            <Ionicons name="search" size={24} color="black" />
-            <Animated.Text style={[styles.searchText, { transform: [{ translateY: translateYAnim }] }]}>
-              {placeholderOptions[placeholderIndex]}
-            </Animated.Text>
-          </View>
+        <TouchableOpacity onPress={handleFetchUserDetails}>
+          <Octicons name="feed-person" size={30} color="black" />
         </TouchableOpacity>
       </View>
-    </View>
+
+      <TouchableOpacity onPress={handleSearchPress}>
+        <View style={styles.searchBarContainer}>
+          <Ionicons name="search" size={24} color="black" />
+          <Animated.Text style={[styles.searchText, { transform: [{ translateY: translateYAnim }] }]}>
+            {placeholderOptions[placeholderIndex]}
+          </Animated.Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   mainContainer: {
-    backgroundColor: "lightblue",
     padding: 10,
     borderRadius: 10,
   },
@@ -92,6 +125,7 @@ const styles = StyleSheet.create({
   },
   deliveryInfo: {
     fontWeight: "bold",
+    color: 'darkred',
   },
   searchBarContainer: {
     marginTop: 10,

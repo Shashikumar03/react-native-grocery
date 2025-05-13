@@ -1,13 +1,13 @@
 import axios from "axios";
 import { getBaseUrl } from "../../constants/Baseurl";
 
-export const getPaymentOrder = async (userId,addressId , paymentMode) => {
+export const applyPromoCode = async (userId,promoCode ) => {
     try {
       // const userId=1
       // const addressId=3
-      const url = `${getBaseUrl()}/api/place-order/${userId}/${addressId}?paymentMode=${paymentMode}`;
+      const url = `${getBaseUrl()}/api/promos/apply/${userId}?promoCode=${promoCode}`;
       const response = await axios.post(url)
-      console.log(response.data)
+      // console.log(response.data)
       return {
           success: true,
           data: response.data,

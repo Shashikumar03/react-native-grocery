@@ -99,7 +99,7 @@ export async function removeDeliveryAddressId() {
 
 export const clearSession = async () => {
   await SecureStore.deleteItemAsync('userId');
-  await SecureStore.deleteItemAsync('deliveryAddressId');
+  // await SecureStore.deleteItemAsync('deliveryAddressId');
   await SecureStore.deleteItemAsync("jwt")
   // Add any other stored keys like tokens
 
