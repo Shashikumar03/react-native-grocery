@@ -20,22 +20,19 @@ export default function AllCategoriesFromApi() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [quantity, setQuantity] = useState('');
+  const [isAddingToCart, setIsAddingToCart] = useState(false); // NEW
 
-  // Fetch categories on component mount
   useEffect(() => {
     getAllCategory();
   }, []);
 
-  // Fetch all categories from API
   const getAllCategory = async () => {
     try {
       const response = await getAllCategories();
       if (response.success) {
         setAllCategories(response.data);
-        console.log(response.data);
       } else {
         Alert.alert('Error', 'Failed to load categories. Please try again.');
-        console.log('Error occurred:', response.error);
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
@@ -43,8 +40,16 @@ export default function AllCategoriesFromApi() {
     }
   };
 
-  // Show confirmation alert before adding to cart
   const addProductToCartHandler = (itemId) => {
+    const selectedItem = allCategories
+      .flatMap((category) => category.productsDto)
+      .find((product) => product.id === itemId);
+
+    if (!selectedItem?.available) {
+      Alert.alert('Out of Stock', 'This item is currently not available.');
+      return;
+    }
+
     Alert.alert(
       'Add to Cart',
       'Are you sure you want to add this item to the cart?',
@@ -65,46 +70,63 @@ export default function AllCategoriesFromApi() {
     );
   };
 
-  // Handle adding product to cart
   const handleAddToCart = async () => {
     const qty = parseInt(quantity, 10);
     if (isNaN(qty) || qty <= 0) {
       Alert.alert('Invalid quantity', 'Please enter a valid quantity.');
       return;
     }
+
+    setIsAddingToCart(true); // Disable button
+
     try {
       const userId = await getUserId();
       const response = await addProductToCart(userId, selectedProductId, qty);
       if (response.success) {
         Alert.alert('Success', 'Item added to cart successfully.');
+        setModalVisible(false);
       } else {
         Alert.alert('Error', 'Failed to add item to cart.');
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
       console.error('addProductToCart error:', error);
+    } finally {
+      setIsAddingToCart(false); // Re-enable button
+      setQuantity('');
     }
-    setQuantity('');
-    setModalVisible(false);
   };
 
-  // Render individual product card
   const renderProduct = ({ item }) => (
-    <View style={styles.productCard}>
+    <View
+      style={[
+        styles.productCard,
+        !item.available && { opacity: 0.5 },
+      ]}
+    >
       <TouchableOpacity
         onPress={() => addProductToCartHandler(item.id)}
         style={styles.productCardContent}
+        disabled={!item.available}
         accessibilityLabel={`Add ${item.name} to cart`}
         accessibilityRole="button"
       >
         <Image
-          source={{ uri: item.imageUrl ||"www.modi.com" }}
+          source={{ uri: item.imageUrl || 'https://via.placeholder.com/80' }}
           style={styles.productImage}
           resizeMode="cover"
         />
         <View style={styles.productDetails}>
           <Text style={styles.productName} numberOfLines={2}>
             {item.name}
+          </Text>
+          <Text
+            style={[
+              styles.productPrice,
+              { color: item.available ? '#2e7d32' : 'red' },
+            ]}
+          >
+            {item.available ? 'Available' : 'Out of Stock'}
           </Text>
           <View style={styles.priceContainer}>
             <Text style={styles.productPrice}>Rs {item.price.toFixed(2)}</Text>
@@ -115,7 +137,6 @@ export default function AllCategoriesFromApi() {
     </View>
   );
 
-  // Render category with products
   const renderCategory = ({ item }) => (
     <View style={styles.categoryContainer}>
       <Text style={styles.categoryTitle}>{item.name}</Text>
@@ -163,8 +184,20 @@ export default function AllCategoriesFromApi() {
               accessibilityLabel="Quantity input"
             />
             <View style={styles.modalButtonContainer}>
-              <Button title="Add to Cart" onPress={handleAddToCart} />
-              <Button title="Cancel" onPress={() => setModalVisible(false)} />
+              <Button
+                title={isAddingToCart ? 'Adding...' : 'Add to Cart'}
+                onPress={handleAddToCart}
+                disabled={isAddingToCart}
+              />
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  if (!isAddingToCart) {
+                    setModalVisible(false);
+                    setQuantity('');
+                  }
+                }}
+              />
             </View>
           </View>
         </View>
@@ -177,7 +210,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 2,
-    backgroundColor: '#f5f5f5', // Light gray background for main container
+    backgroundColor: '#f5f5f5',
   },
   categoryList: {
     paddingBottom: 20,
@@ -185,7 +218,7 @@ const styles = StyleSheet.create({
   categoryContainer: {
     marginBottom: 8,
     padding: 12,
-    backgroundColor: '#fafafa', // Off-white for category box
+    backgroundColor: '#fafafa',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#d0d0d0',
@@ -210,7 +243,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   productCard: {
-    backgroundColor: '#ffffff', // Pure white for product box
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     padding: 10,
     marginRight: 10,
@@ -250,7 +283,6 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#2e7d32',
   },
   productUnit: {
     fontSize: 10,
@@ -266,7 +298,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: 280,
     padding: 20,
-    backgroundColor: '#ffffff', // White for modal box
+    backgroundColor: '#ffffff',
     borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,

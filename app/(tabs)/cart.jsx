@@ -31,9 +31,13 @@ export default function Cart() {
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [appliedPromo, setAppliedPromo] = useState(null);
-  const [idOfCart, setIdOfCart]= useState(null)
+  const [idOfCart, setIdOfCart] = useState(null);
   const [selectedAddress, setSelectedAddresss] = useState();
-  const [paymentMode, setPaymentMode] = useState('online'); // 'online' or 'cod'
+  const [paymentMode, setPaymentMode] = useState('online');
+  
+  // Change here: track loading per item and per action ('add' or 'dec')
+  const [loadingButton, setLoadingButton] = useState({ cartItemId: null, type: null });
+
   const router = useRouter();
 
   const getCartItemMethod = async () => {
@@ -41,8 +45,7 @@ export default function Cart() {
     const response = await getCartItems(userId);
     if (response.success) {
       const sortedItems = response.data.cartItemsDto.sort((a, b) => a.cartItemId - b.cartItemId);
-      const cartIdOfUser=response.data.cartId
-      setIdOfCart(cartIdOfUser)
+      setIdOfCart(response.data.cartId);
       setAllCartItems({
         ...response.data,
         cartItemsDto: sortedItems,
@@ -55,24 +58,19 @@ export default function Cart() {
   useEffect(() => {
     const getSelectedAddress = async () => {
       const addressId = await getDeliveryAddressId();
-      if (addressId == null) {
-        alert('please choose one address');
-      } else {
-        const response = await getDeliveryAddressByItsId(addressId);
-        if (response.success) {
-          setSelectedAddresss(response.data);
-        }
+      if (!addressId) {
+        alert('Please choose one address');
+        return;
       }
+      const response = await getDeliveryAddressByItsId(addressId);
+      if (response.success) setSelectedAddresss(response.data);
     };
     getSelectedAddress();
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      getCartItemMethod();
-      return () => {};
-    }, [])
-  );
+  useFocusEffect(useCallback(() => {
+    getCartItemMethod();
+  }, []));
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -80,91 +78,88 @@ export default function Cart() {
     setRefreshing(false);
   };
 
-  const confirmDeleteItem = (productId) => {
-    Alert.alert('Remove Item', 'Are you sure you want to remove this item from the cart?', [
+  const confirmDeleteItem = (productId, cartItemId) => {
+    Alert.alert('Remove Item', 'Are you sure you want to remove this item?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Yes', onPress: () => handleDeleteItem(productId) },
+      { text: 'Yes', onPress: () => handleDeleteItem(productId, cartItemId) },
     ]);
   };
 
-  const handleDeleteItem = async (productId) => {
-    const userId = await getUserId();
-    const response = await removeItemFromCart(userId, productId);
-    if (response.success) {
-      getCartItemMethod();
-    } else {
-      ToastAndroid.show(`Error: ${response.data.message}`, ToastAndroid.BOTTOM);
+  const handleDeleteItem = async (productId, cartItemId) => {
+    if (loadingButton.cartItemId === cartItemId) return;
+    setLoadingButton({ cartItemId, type: 'delete' });
+    try {
+      const userId = await getUserId();
+      const response = await removeItemFromCart(userId, productId);
+      if (response.success) await getCartItemMethod();
+      else ToastAndroid.show(`Error: ${response.data.message}`, ToastAndroid.BOTTOM);
+    } catch (e) {
+      ToastAndroid.show("Delete failed", ToastAndroid.BOTTOM);
+    } finally {
+      setLoadingButton({ cartItemId: null, type: null });
     }
   };
 
-  const updateQuantity = async (item, newQuantity) => {
+  const updateQuantity = async (item, newQuantity, actionType) => {
     const cartItemId = item.cartItemId;
-    const itemQuantity = item.quantity;
+    if (loadingButton.cartItemId === cartItemId && loadingButton.type === actionType) return;
+    setLoadingButton({ cartItemId, type: actionType });
 
     if (newQuantity < 1) {
       Alert.alert("Invalid Quantity", "Quantity can't be less than 1");
+      setLoadingButton({ cartItemId: null, type: null });
       return;
     }
 
-    let response;
-    if (newQuantity > itemQuantity) {
-      response = await increaseOrDecreaseCartItem(cartItemId, 'add');
-    } else {
-      response = await increaseOrDecreaseCartItem(cartItemId, 'dec');
-    }
-
-    if (response.success) {
-      getCartItemMethod();
-    } else {
-      ToastAndroid.show(`Error: ${response.data.message}`, ToastAndroid.BOTTOM);
+    try {
+      const response = await increaseOrDecreaseCartItem(cartItemId, actionType === 'add' ? 'add' : 'dec');
+      if (response.success) await getCartItemMethod();
+      else ToastAndroid.show(`Error: ${response.data.message}`, ToastAndroid.BOTTOM);
+    } catch (err) {
+      ToastAndroid.show("Something went wrong", ToastAndroid.BOTTOM);
+    } finally {
+      setLoadingButton({ cartItemId: null, type: null });
     }
   };
 
   const handleApplyPromoCode = async () => {
     const userId = await getUserId();
     if (!promoCode) return;
-
     const response = await applyPromoCode(userId, promoCode);
     if (response.success) {
       ToastAndroid.show(response.data.message, ToastAndroid.SHORT);
       setDiscount(response.data.discountAmount);
       setAppliedPromo(response.data.promoCode);
-      await applyPromoCodeDiscount(idOfCart, response.data.discountAmount)
+      await applyPromoCodeDiscount(idOfCart, response.data.discountAmount);
     } else {
       ToastAndroid.show(response.data.message, ToastAndroid.LONG);
     }
   };
-  const handleRevomePromoCode= async()=>{
 
-      setPromoCode('');
-      setDiscount(0);
-      setAppliedPromo(null);
-      await applyPromoCodeDiscount(idOfCart, 0)
-
-    
+  const handleRevomePromoCode = async () => {
+    setPromoCode('');
+    setDiscount(0);
+    setAppliedPromo(null);
+    await applyPromoCodeDiscount(idOfCart, 0);
   };
 
   const doPayment = async () => {
-    console.log("payment mode", paymentMode)
     const orderAmount = totalAmount.toFixed(2);
     if (paymentMode === 'online') {
       const orderId = 'order_PMSNen1QWtsEPD';
       router.push(`/rozarpay/${orderId}`);
     } else {
-      console.log("shashi")
       const addressId = await getDeliveryAddressId();
-      const storedUserId = await getUserId();
-       const response = await getPaymentOrder(storedUserId, addressId, "CASH_ON_DELIVERY");
-       console.log(response.data)
-       if(response.success){
-         Alert.alert('Payment Successful', `Payment ID: ${response.data?.paymentDto.id}`, [
-                  { text: 'OK', onPress: () => router.push('/home') },
-                ]);
-       }else{
-        console.log("cash on delivery response :", response.data)
-        Alert.alert("Delivery failed");
-       }
-     
+      const userId = await getUserId();
+      const response = await getPaymentOrder(userId, addressId, "CASH_ON_DELIVERY");
+      console.log("response of order place",response.data)
+      if (response.success) {
+        Alert.alert('Payment Successful', `Payment ID: ${response.data?.paymentDto.id}`, [
+          { text: 'OK', onPress: () => router.push('/home') },
+        ]);
+      } else {
+        Alert.alert(`Order Failed: ${response.data?.message}`);
+      }
     }
   };
 
@@ -175,22 +170,35 @@ export default function Cart() {
         <Text style={styles.productName}>{item.productName}</Text>
         <View style={styles.quantityContainer}>
           <TouchableOpacity
-            style={styles.quantityButton}
-            onPress={() => updateQuantity(item, item.quantity - 1)}
+            style={[
+              styles.quantityButton,
+              (item.quantity <= 1 || (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'dec'))
+                ? { backgroundColor: '#ccc' }
+                : null,
+            ]}
+            onPress={() => updateQuantity(item, item.quantity - 1, 'dec')}
+            disabled={item.quantity <= 1 || (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'dec')}
           >
             <Icon name="remove" size={20} color="white" />
           </TouchableOpacity>
           <Text style={styles.quantity}>{item.quantity}</Text>
           <TouchableOpacity
-            style={styles.quantityButton}
-            onPress={() => updateQuantity(item, item.quantity + 1)}
+            style={[
+              styles.quantityButton,
+              (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'add') ? { backgroundColor: '#ccc' } : null,
+            ]}
+            onPress={() => updateQuantity(item, item.quantity + 1, 'add')}
+            disabled={loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'add'}
           >
             <Icon name="add" size={20} color="white" />
           </TouchableOpacity>
         </View>
         <Text style={styles.price}>Price: ₹{item.price.toFixed(2)}</Text>
       </View>
-      <TouchableOpacity onPress={() => confirmDeleteItem(item.productId)}>
+      <TouchableOpacity
+        onPress={() => confirmDeleteItem(item.productId, item.cartItemId)}
+        disabled={loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'delete'}
+      >
         <Icon name="delete" size={30} color="red" />
       </TouchableOpacity>
     </View>
@@ -198,114 +206,95 @@ export default function Cart() {
 
   const totalAmount = Math.max(0, (allCartItems.cartTotalPrice || 0) - discount);
 
-
   return (
     <ScrollView
-    style={styles.container}
-    contentContainerStyle={{ paddingBottom: 30 }}
-    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-  >
-    <View style={styles.container}>
-      <Text style={styles.cartTitle}>Cart Items</Text>
-      <Text style={{ marginBottom: 10 }}>Pull down to refresh cart items</Text>
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 30 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      <View style={styles.container}>
+        <Text style={styles.cartTitle}>Cart Items</Text>
+        <Text style={{ marginBottom: 10 }}>Pull down to refresh cart items</Text>
 
-      {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? (
-        <Text style={styles.emptyCartText}>No items in the cart</Text>
-      ) : (
-        <FlatList
-          data={allCartItems.cartItemsDto}
-          keyExtractor={(item) => item.cartItemId.toString()}
-          renderItem={renderCartItem}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        />
-      )}
+        {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? (
+          <Text style={styles.emptyCartText}>No items in the cart</Text>
+        ) : (
+          <FlatList
+            data={allCartItems.cartItemsDto}
+            keyExtractor={(item) => item.cartItemId.toString()}
+            renderItem={renderCartItem}
+            scrollEnabled={false}
+          />
+        )}
 
-      {/* Promo Code Section */}
-     {/* Promo Code Section */}
-{allCartItems.cartItemsDto && allCartItems.cartItemsDto.length > 0 && (
-  appliedPromo ? (
-    <View style={styles.appliedPromoContainer}>
-      <Text style={styles.appliedText}>
-        Applied "{appliedPromo}" - Discount ₹{discount.toFixed(2)}
-      </Text>
-      <TouchableOpacity
-        onPress={handleRevomePromoCode}
-        style={styles.removePromoButton}
-      >
-        <Text style={styles.removePromoText}>Remove Promo Code</Text>
-      </TouchableOpacity>
-    </View>
-  ) : (
-    <View style={styles.promoContainer}>
-      <TextInput
-        style={styles.promoInput}
-        placeholder="Enter Promo Code"
-        value={promoCode}
-        onChangeText={setPromoCode}
-      />
-      <TouchableOpacity style={styles.applyButton} onPress={handleApplyPromoCode}>
-        <Text style={{ color: 'white' }}>Apply</Text>
-      </TouchableOpacity>
-    </View>
-  )
-)}
+        {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length > 0 && (
+          appliedPromo ? (
+            <View style={styles.appliedPromoContainer}>
+              <Text style={styles.appliedText}>
+                Applied "{appliedPromo}" - Discount ₹{discount.toFixed(2)}
+              </Text>
+              <TouchableOpacity onPress={handleRevomePromoCode} style={styles.removePromoButton}>
+                <Text style={styles.removePromoText}>Remove Promo Code</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.promoContainer}>
+              <TextInput
+                style={styles.promoInput}
+                placeholder="Enter Promo Code"
+                value={promoCode}
+                onChangeText={setPromoCode}
+              />
+              <TouchableOpacity style={styles.applyButton} onPress={handleApplyPromoCode}>
+                <Text style={{ color: 'white' }}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          )
+        )}
 
+        {selectedAddress && (
+          <View style={styles.addressContainer}>
+            <Text style={styles.addressTitle}>Delivery Address</Text>
+            <Text>{selectedAddress.address}, {selectedAddress.landmark}</Text>
+            <Text>{selectedAddress.city}, {selectedAddress.state} - {selectedAddress.pin}</Text>
+            <Text>Mobile: {selectedAddress.mobile}</Text>
+          </View>
+        )}
 
-      {selectedAddress && (
-        <View style={styles.addressContainer}>
-          <Text style={styles.addressTitle}>Delivery Address</Text>
-          <Text>
-            {selectedAddress.address}, {selectedAddress.landmark}
-          </Text>
-          <Text>
-            {selectedAddress.city}, {selectedAddress.state} - {selectedAddress.pin}
-          </Text>
-          <Text>Mobile: {selectedAddress.mobile}</Text>
+        <View style={styles.paymentModeContainer}>
+          <Text style={styles.addressTitle}>Choose Payment Mode</Text>
+          <View style={styles.paymentOptions}>
+            <TouchableOpacity
+              style={[styles.paymentOption, paymentMode === 'online' && styles.paymentOptionSelected]}
+              onPress={() => setPaymentMode('online')}
+            >
+              <Text style={paymentMode === 'online' ? styles.selectedText : styles.optionText}>Online</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.paymentOption, paymentMode === 'cod' && styles.paymentOptionSelected]}
+              onPress={() => setPaymentMode('cod')}
+            >
+              <Text style={paymentMode === 'cod' ? styles.selectedText : styles.optionText}>Cash on Delivery</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
 
-      {/* Payment Mode Selection */}
-      <View style={styles.paymentModeContainer}>
-        <Text style={styles.addressTitle}>Choose Payment Mode</Text>
-        <View style={styles.paymentOptions}>
+        <View style={styles.totalContainer}>
           <TouchableOpacity
-            style={[styles.paymentOption, paymentMode === 'online' && styles.paymentOptionSelected]}
-            onPress={() => setPaymentMode('online')}
+            onPress={doPayment}
+            disabled={allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0}
           >
-            <Text style={paymentMode === 'online' ? styles.selectedText : styles.optionText}>
-              Online
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.paymentOption, paymentMode === 'cod' && styles.paymentOptionSelected]}
-            onPress={() => setPaymentMode('cod')}
-          >
-            <Text style={paymentMode === 'cod' ? styles.selectedText : styles.optionText}>
-              Cash on Delivery
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.totalContainer}>
-        <TouchableOpacity
-          onPress={doPayment}
-          disabled={allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0}
-        >
-          <Text
-            style={[
+            <Text style={[
               styles.totalText,
               {
-                opacity:
-                  allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? 0.5 : 1,
+                opacity: allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? 0.5 : 1,
               },
-            ]}
-          >
-            Place Order: ₹{totalAmount.toFixed(2)}
-          </Text>
-        </TouchableOpacity>
+            ]}>
+              Place Order: ₹{totalAmount.toFixed(2)}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
     </ScrollView>
   );
 }
@@ -336,10 +325,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 15,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
     elevation: 2,
   },
   productImage: {
@@ -465,23 +450,12 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#343a40',
     borderRadius: 12,
+    marginTop: 30,
     alignItems: 'center',
-    marginTop: 25,
-    marginBottom: 15,
   },
   totalText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: '#fff',
   },
-  // container: {
-  //   flex: 1,
-  //   backgroundColor: '#ffffff',
-  // },
-  
-  // scrollContent: {
-  //   padding: 16,
-  //   paddingBottom: 30,
-  // },
-});
-
+  });    

@@ -4,10 +4,11 @@ import { getBaseUrl } from "../../constants/Baseurl";
 
 export const sendOtp = async (mobile) => {
     try {
-        
+        console.log(mobile)
         const url = `${getBaseUrl()}/sms/sendOtp?to=${mobile}`;
+        console.log(url)
         const response = await axios.post(url)
-        // console.log(response.data)
+        console.log("send otp resposne",response.data)
         return {
             success: true,
             data: response.data,
@@ -15,6 +16,7 @@ export const sendOtp = async (mobile) => {
         }
   
       } catch (error) {
+        console.log("send otp error",error.response.data)
         const errorData = error.response ? error.response.data : { message: "Network error" };
         const errorStatus = error.response ? error.response.status : 500;
   
