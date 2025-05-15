@@ -1,4 +1,4 @@
-import { View, StyleSheet, StatusBar, SafeAreaView, ScrollView } from 'react-native';
+import { View, StyleSheet, StatusBar, SafeAreaView } from 'react-native';
 import React from 'react';
 import CustomHeader from '../../components/Header/CustomHeader';
 import HomeCategory from '../../components/Home/HomeCategory';
@@ -15,10 +15,10 @@ export default function Home() {
         <HomeCategory />
       </View>
 
-      {/* Scrollable Content */}
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      {/* Remove ScrollView, just render the FlatList inside AllCategoriesFromApi */}
+      <View style={styles.contentContainer}>
         <AllCategoriesFromApi />
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -33,7 +33,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 10,
   },
-  scrollContainer: {
+  contentContainer: {
+    flex: 1,
     paddingHorizontal: 12,
     paddingBottom: 20,
   },

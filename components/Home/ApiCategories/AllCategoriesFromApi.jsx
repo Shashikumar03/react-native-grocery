@@ -9,6 +9,7 @@ import {
   TextInput,
   Button,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { getAllCategories } from '../../../service/category/GetAllCategories';
@@ -20,13 +21,15 @@ export default function AllCategoriesFromApi() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [quantity, setQuantity] = useState('');
-  const [isAddingToCart, setIsAddingToCart] = useState(false); // NEW
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Loading state
 
   useEffect(() => {
     getAllCategory();
   }, []);
 
   const getAllCategory = async () => {
+    setIsLoading(true);
     try {
       const response = await getAllCategories();
       if (response.success) {
@@ -37,6 +40,8 @@ export default function AllCategoriesFromApi() {
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
       console.error('getAllCategory error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,11 +59,7 @@ export default function AllCategoriesFromApi() {
       'Add to Cart',
       'Are you sure you want to add this item to the cart?',
       [
-        {
-          text: 'No',
-          onPress: () => console.log('User cancelled'),
-          style: 'cancel',
-        },
+        { text: 'No', onPress: () => console.log('User cancelled'), style: 'cancel' },
         {
           text: 'Yes',
           onPress: () => {
@@ -77,7 +78,7 @@ export default function AllCategoriesFromApi() {
       return;
     }
 
-    setIsAddingToCart(true); // Disable button
+    setIsAddingToCart(true);
 
     try {
       const userId = await getUserId();
@@ -92,18 +93,13 @@ export default function AllCategoriesFromApi() {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
       console.error('addProductToCart error:', error);
     } finally {
-      setIsAddingToCart(false); // Re-enable button
+      setIsAddingToCart(false);
       setQuantity('');
     }
   };
 
   const renderProduct = ({ item }) => (
-    <View
-      style={[
-        styles.productCard,
-        !item.available && { opacity: 0.5 },
-      ]}
-    >
+    <View style={[styles.productCard, !item.available && { opacity: 0.5 }]}> 
       <TouchableOpacity
         onPress={() => addProductToCartHandler(item.id)}
         style={styles.productCardContent}
@@ -117,20 +113,21 @@ export default function AllCategoriesFromApi() {
           resizeMode="cover"
         />
         <View style={styles.productDetails}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.name}
-          </Text>
-          <Text
-            style={[
-              styles.productPrice,
-              { color: item.available ? '#2e7d32' : 'red' },
-            ]}
-          >
+          <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+          <Text style={[styles.productPrice, { color: item.available ? '#2e7d32' : 'red' }]}> 
             {item.available ? 'Available' : 'Out of Stock'}
           </Text>
+
           <View style={styles.priceContainer}>
-            <Text style={styles.productPrice}>Rs {item.price.toFixed(2)}</Text>
-            <Text style={styles.productUnit}>/{item?.unit || 'unit'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ textDecorationLine: 'line-through', color: '#888', fontSize: 12, marginRight: 6 }}>
+                ₹{(item.price * 1.1).toFixed(0)}
+              </Text>
+              <Text style={{ color: '#2e7d32', fontSize: 12, fontWeight: 'bold' }}>
+                10% OFF
+              </Text>
+            </View>
+            <Text style={styles.finalPrice}>₹{item.price.toFixed(0)} / {item.unit || 'unit'}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -156,13 +153,20 @@ export default function AllCategoriesFromApi() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={allCategories}
-        keyExtractor={(category) => category.id.toString()}
-        renderItem={renderCategory}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.categoryList}
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2e7d32" />
+          <Text style={styles.loadingText}>Loading Categories...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={allCategories}
+          keyExtractor={(category) => category.id.toString()}
+          renderItem={renderCategory}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.categoryList}
+        />
+      )}
       <Modal
         animationType="slide"
         transparent={true}
@@ -276,18 +280,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 3,
   },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   productPrice: {
     fontSize: 12,
     fontWeight: '500',
+    marginBottom: 3,
   },
-  productUnit: {
-    fontSize: 10,
-    color: '#666',
-    marginLeft: 3,
+  priceContainer: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  strikeThroughPrice: {
+    fontSize: 13,
+    color: 'gray',
+    textDecorationLine: 'line-through',
+    marginBottom: 2,
+  },
+  finalPrice: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000',
   },
   modalContainer: {
     flex: 1,
@@ -331,5 +342,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     gap: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#2e7d32',
   },
 });
