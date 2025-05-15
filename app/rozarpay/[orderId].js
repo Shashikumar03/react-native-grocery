@@ -59,9 +59,9 @@ export default function RazorpayPaymentScreen() {
                       key: "${razorpayKey}",
                       amount: "${amount}",
                       currency: "INR",
-                      name: "Acme Corp",
+                      name: "Bazaario",
                       description: "Purchase Order #${response.data.orderId}",
-                      image: "https://i.imgur.com/3g7nmJC.jpg",
+                      image: "https://firebasestorage.googleapis.com/v0/b/grocery-app-6fe52.appspot.com/o/images%2F35992.jpg?alt=media&token=61f73fcb-c97e-4bbb-8002-a2d2217f459d",
                       order_id: "${rozerpayId}",
                       prefill: {
                         name: "Shashi Kushwaha",

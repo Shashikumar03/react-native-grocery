@@ -157,7 +157,7 @@ export default function Cart() {
        const response = await getPaymentOrder(storedUserId, addressId, "CASH_ON_DELIVERY");
        console.log(response.data)
        if(response.success){
-         Alert.alert('Payment Successful', `Payment ID: ${1}`, [
+         Alert.alert('Payment Successful', `Payment ID: ${response.data?.paymentDto.id}`, [
                   { text: 'OK', onPress: () => router.push('/home') },
                 ]);
        }else{
@@ -196,7 +196,8 @@ export default function Cart() {
     </View>
   );
 
-  const totalAmount = (allCartItems.cartTotalPrice || 0) - discount;
+  const totalAmount = Math.max(0, (allCartItems.cartTotalPrice || 0) - discount);
+
 
   return (
     <ScrollView
@@ -220,31 +221,35 @@ export default function Cart() {
       )}
 
       {/* Promo Code Section */}
-      {appliedPromo ? (
-        <View style={styles.appliedPromoContainer}>
-          <Text style={styles.appliedText}>
-            Applied "{appliedPromo}" - Discount ₹{discount.toFixed(2)}
-          </Text>
-          <TouchableOpacity
-            onPress={handleRevomePromoCode}
-            style={styles.removePromoButton}
-          >
-            <Text style={styles.removePromoText}>Remove Promo Code</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.promoContainer}>
-          <TextInput
-            style={styles.promoInput}
-            placeholder="Enter Promo Code"
-            value={promoCode}
-            onChangeText={setPromoCode}
-          />
-          <TouchableOpacity style={styles.applyButton} onPress={handleApplyPromoCode}>
-            <Text style={{ color: 'white' }}>Apply</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+     {/* Promo Code Section */}
+{allCartItems.cartItemsDto && allCartItems.cartItemsDto.length > 0 && (
+  appliedPromo ? (
+    <View style={styles.appliedPromoContainer}>
+      <Text style={styles.appliedText}>
+        Applied "{appliedPromo}" - Discount ₹{discount.toFixed(2)}
+      </Text>
+      <TouchableOpacity
+        onPress={handleRevomePromoCode}
+        style={styles.removePromoButton}
+      >
+        <Text style={styles.removePromoText}>Remove Promo Code</Text>
+      </TouchableOpacity>
+    </View>
+  ) : (
+    <View style={styles.promoContainer}>
+      <TextInput
+        style={styles.promoInput}
+        placeholder="Enter Promo Code"
+        value={promoCode}
+        onChangeText={setPromoCode}
+      />
+      <TouchableOpacity style={styles.applyButton} onPress={handleApplyPromoCode}>
+        <Text style={{ color: 'white' }}>Apply</Text>
+      </TouchableOpacity>
+    </View>
+  )
+)}
+
 
       {selectedAddress && (
         <View style={styles.addressContainer}>
@@ -480,94 +485,3 @@ const styles = StyleSheet.create({
   // },
 });
 
-// const styles = StyleSheet.create({
-//   container: { flex: 1, padding: 20, marginTop: StatusBar.currentHeight },
-//   cartTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-//   emptyCartText: {
-//     fontSize: 18, fontWeight: 'bold', color: 'gray', textAlign: 'center', marginTop: 20,
-//   },
-//   cartItemContainer: {
-//     flexDirection: 'row', backgroundColor: '#f9f9f9',
-//     padding: 15, marginBottom: 15, borderRadius: 8,
-//     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-//     shadowOpacity: 0.1, shadowRadius: 3, elevation: 2,
-//   },
-//   productImage: { width: 80, height: 80, borderRadius: 10, marginRight: 15 },
-//   detailsContainer: { flex: 1, justifyContent: 'center' },
-//   productName: { fontSize: 18, fontWeight: 'bold' },
-//   quantityContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 10 },
-//   quantity: { fontSize: 16, marginHorizontal: 10, color: '#555' },
-//   price: { fontSize: 16, color: '#333' },
-//   quantityButton: { backgroundColor: "blue", borderRadius: 3, padding: 2 },
-//   promoContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-//   promoInput: {
-//     flex: 1, borderWidth: 1, borderColor: 'gray', padding: 10,
-//     borderRadius: 5, marginRight: 10,
-//   },
-//   applyButton: {
-//     backgroundColor: 'blue', paddingVertical: 10, paddingHorizontal: 20,
-//     borderRadius: 5,
-//   },
-//   appliedPromoContainer: {
-//     backgroundColor: '#e0ffe0', padding: 12, borderRadius: 6, marginTop: 20,
-//   },
-//   appliedText: { fontWeight: 'bold', color: 'green' },
-//   removePromoButton: {
-//     marginTop: 8, padding: 6, backgroundColor: '#ff6666',
-//     borderRadius: 4, alignSelf: 'flex-start',
-//   },
-//   removePromoText: { color: 'white', fontWeight: 'bold' },
- 
-//   addressContainer: {
-//     padding: 15,
-//     backgroundColor: '#f0f0f0',
-//     borderRadius: 10,
-//     marginTop: 10,
-//   },
-//   addressTitle: {
-//     fontSize: 18,
-//     fontWeight: 'bold',
-//     marginBottom: 5,
-//   },
-//   totalContainer: {
-//     padding: 15,
-//     backgroundColor: 'black',
-//     borderRadius: 10,
-//     alignItems: 'center',
-//     marginTop: 20,
-//   },
-//   totalText: {
-//     fontSize: 18,
-//     fontWeight: 'bold',
-//     color: 'white',
-//   },
-//   paymentModeContainer: {
-//     marginTop: 20,
-//     padding: 15,
-//     backgroundColor: '#f4f4f4',
-//     borderRadius: 10,
-//   },
-//   paymentOptions: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-around',
-//     marginTop: 10,
-//   },
-//   paymentOption: {
-//     padding: 10,
-//     borderRadius: 5,
-//     borderWidth: 1,
-//     borderColor: 'gray',
-//   },
-//   paymentOptionSelected: {
-//     backgroundColor: 'blue',
-//     borderColor: 'blue',
-//   },
-//   optionText: {
-//     color: 'black',
-//     fontWeight: '500',
-//   },
-//   selectedText: {
-//     color: 'white',
-//     fontWeight: 'bold',
-//   },
-// });

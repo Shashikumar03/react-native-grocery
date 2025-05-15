@@ -1,5 +1,5 @@
 export function getBaseUrl() {
-    return "http://192.168.208.1:9191"
+    return "https://grocery-app-env.up.railway.app"
     // "anty wifi"
       // return "http://192.168.0.189:8283";
       // "vishal"
