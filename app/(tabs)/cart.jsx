@@ -19,11 +19,11 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { removeItemFromCart } from '../../service/cart/RemoveItemFromCart';
 import { increaseOrDecreaseCartItem } from '../../service/cart/IncreaseOrDecreaseCartItems';
 import { useRouter } from 'expo-router';
-import { getDeliveryAddressId, getUserId } from '../../utils/token';
+import { getCurrentUserId } from '../../utils/token';
 import { applyPromoCode } from '../../service/promoCode/applyPromoCode';
-import { getDeliveryAddressByItsId } from '../../service/deliveryAddress/GetDeliveryAddressByDeliveryId';
 import { getPaymentOrder } from '../../service/rozarpay/rozerpay';
 import { applyPromoCodeDiscount } from '../../service/promoCode/applyPromoCodeDiscount';
+import { getAllDeliveryAddressOfUser } from '../../service/deliveryAddress/GetAllDeliveryAddressOfUser';
 
 export default function Cart() {
   const [allCartItems, setAllCartItems] = useState([]);
@@ -32,49 +32,64 @@ export default function Cart() {
   const [discount, setDiscount] = useState(0);
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [idOfCart, setIdOfCart] = useState(null);
-  const [selectedAddress, setSelectedAddresss] = useState();
+  const [selectedAddress, setSelectedAddress] = useState(null);
   const [paymentMode, setPaymentMode] = useState('online');
-  
-  // Change here: track loading per item and per action ('add' or 'dec')
+  const [userAddresses, setUserAddresses] = useState([]);
   const [loadingButton, setLoadingButton] = useState({ cartItemId: null, type: null });
 
   const router = useRouter();
 
   const getCartItemMethod = async () => {
-    const userId = await getUserId();
-    const response = await getCartItems(userId);
-    if (response.success) {
-      const sortedItems = response.data.cartItemsDto.sort((a, b) => a.cartItemId - b.cartItemId);
-      setIdOfCart(response.data.cartId);
-      setAllCartItems({
-        ...response.data,
-        cartItemsDto: sortedItems,
-      });
-    } else {
-      console.log(response.data.message);
+    try {
+      const userId = await getCurrentUserId();
+      const response = await getCartItems(userId);
+      if (response.success) {
+        const sortedItems = response.data.cartItemsDto.sort((a, b) => a.cartItemId - b.cartItemId);
+        setIdOfCart(response.data.cartId);
+        setAllCartItems({
+          ...response.data,
+          cartItemsDto: sortedItems,
+        });
+      } else {
+        console.log("Cart fetch error:", response.data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching cart items:", error);
+    }
+  };
+
+  const getAllDeliveryAddressOfUser1 = async () => {
+    try {
+      const userId = await getCurrentUserId();
+      const response = await getAllDeliveryAddressOfUser(userId);
+      console.log("address response:", response.data);
+      if (response.success) {
+        setUserAddresses(response.data);
+        console.log("Updated userAddresses:", response.data);
+      } else {
+        Alert.alert("Failed", "Failed to fetch addresses");
+        console.error("Error response:", response.data);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Something went wrong while fetching addresses");
+      console.error("Fetch addresses error:", error);
     }
   };
 
   useEffect(() => {
-    const getSelectedAddress = async () => {
-      const addressId = await getDeliveryAddressId();
-      if (!addressId) {
-        alert('Please choose one address');
-        return;
-      }
-      const response = await getDeliveryAddressByItsId(addressId);
-      if (response.success) setSelectedAddresss(response.data);
-    };
-    getSelectedAddress();
+    getAllDeliveryAddressOfUser1();
   }, []);
 
-  useFocusEffect(useCallback(() => {
-    getCartItemMethod();
-  }, []));
+  useFocusEffect(
+    useCallback(() => {
+      getCartItemMethod();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
     await getCartItemMethod();
+    await getAllDeliveryAddressOfUser();
     setRefreshing(false);
   };
 
@@ -89,7 +104,7 @@ export default function Cart() {
     if (loadingButton.cartItemId === cartItemId) return;
     setLoadingButton({ cartItemId, type: 'delete' });
     try {
-      const userId = await getUserId();
+      const userId = await getCurrentUserId();
       const response = await removeItemFromCart(userId, productId);
       if (response.success) await getCartItemMethod();
       else ToastAndroid.show(`Error: ${response.data.message}`, ToastAndroid.BOTTOM);
@@ -123,7 +138,7 @@ export default function Cart() {
   };
 
   const handleApplyPromoCode = async () => {
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     if (!promoCode) return;
     const response = await applyPromoCode(userId, promoCode);
     if (response.success) {
@@ -136,23 +151,36 @@ export default function Cart() {
     }
   };
 
-  const handleRevomePromoCode = async () => {
+  const handleRemovePromoCode = async () => {
     setPromoCode('');
     setDiscount(0);
     setAppliedPromo(null);
     await applyPromoCodeDiscount(idOfCart, 0);
   };
 
+  const handleSelectAddress = (address) => {
+    setSelectedAddress(address);
+    console.log("Selected address updated:", address);
+  };
+
+  const handleAddNewAddress = () => {
+    router.push('/address/add-address');
+  };
+
   const doPayment = async () => {
+    if (!selectedAddress) {
+      Alert.alert('No Address Selected', 'Please select a delivery address before placing the order.');
+      return;
+    }
+
     const orderAmount = totalAmount.toFixed(2);
     if (paymentMode === 'online') {
-      const orderId = 'order_PMSNen1QWtsEPD';
+      const orderId = selectedAddress.deliveryAddressId;
       router.push(`/rozarpay/${orderId}`);
     } else {
-      const addressId = await getDeliveryAddressId();
-      const userId = await getUserId();
-      const response = await getPaymentOrder(userId, addressId, "CASH_ON_DELIVERY");
-      console.log("response of order place",response.data)
+      const userId = await getCurrentUserId();
+      const response = await getPaymentOrder(userId, selectedAddress.deliveryAddressId, "CASH_ON_DELIVERY");
+      console.log("response of order place", response.data);
       if (response.success) {
         Alert.alert('Payment Successful', `Payment ID: ${response.data?.paymentDto.id}`, [
           { text: 'OK', onPress: () => router.push('/home') },
@@ -204,6 +232,20 @@ export default function Cart() {
     </View>
   );
 
+  const renderAddressItem = ({ item }) => (
+    <TouchableOpacity
+      style={[
+        styles.addressItem,
+        selectedAddress?.deliveryAddressId === item.deliveryAddressId && styles.selectedAddressItem,
+      ]}
+      onPress={() => handleSelectAddress(item)}
+    >
+      <Text style={styles.addressText}>{item.address}, {item.landmark}</Text>
+      <Text style={styles.addressText}>{item.city}, {item.state} - {item.pin}</Text>
+      <Text style={styles.addressText}>Mobile: {item.mobile}</Text>
+    </TouchableOpacity>
+  );
+
   const totalAmount = Math.max(0, (allCartItems.cartTotalPrice || 0) - discount);
 
   return (
@@ -233,7 +275,7 @@ export default function Cart() {
               <Text style={styles.appliedText}>
                 Applied "{appliedPromo}" - Discount ₹{discount.toFixed(2)}
               </Text>
-              <TouchableOpacity onPress={handleRevomePromoCode} style={styles.removePromoButton}>
+              <TouchableOpacity onPress={handleRemovePromoCode} style={styles.removePromoButton}>
                 <Text style={styles.removePromoText}>Remove Promo Code</Text>
               </TouchableOpacity>
             </View>
@@ -250,15 +292,6 @@ export default function Cart() {
               </TouchableOpacity>
             </View>
           )
-        )}
-
-        {selectedAddress && (
-          <View style={styles.addressContainer}>
-            <Text style={styles.addressTitle}>Delivery Address</Text>
-            <Text>{selectedAddress.address}, {selectedAddress.landmark}</Text>
-            <Text>{selectedAddress.city}, {selectedAddress.state} - {selectedAddress.pin}</Text>
-            <Text>Mobile: {selectedAddress.mobile}</Text>
-          </View>
         )}
 
         <View style={styles.paymentModeContainer}>
@@ -279,17 +312,40 @@ export default function Cart() {
           </View>
         </View>
 
+        <View style={styles.addressListContainer}>
+          <View style={styles.addressHeader}>
+            <Text style={styles.addressTitle}>Choose Delivery Address</Text>
+            <TouchableOpacity style={styles.addAddressButton} onPress={handleAddNewAddress}>
+              <Text style={styles.addAddressText}>Add Address</Text>
+            </TouchableOpacity>
+          </View>
+          {userAddresses.length > 0 ? (
+            <FlatList
+              data={userAddresses}
+              renderItem={renderAddressItem}
+              keyExtractor={(item) => item.deliveryAddressId.toString()}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.addressList}
+            />
+          ) : (
+            <Text style={styles.emptyAddressText}>No addresses available</Text>
+          )}
+        </View>
+
         <View style={styles.totalContainer}>
           <TouchableOpacity
             onPress={doPayment}
             disabled={allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0}
           >
-            <Text style={[
-              styles.totalText,
-              {
-                opacity: allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? 0.5 : 1,
-              },
-            ]}>
+            <Text
+              style={[
+                styles.totalText,
+                {
+                  opacity: allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? 0.5 : 1,
+                },
+              ]}
+            >
               Place Order: ₹{totalAmount.toFixed(2)}
             </Text>
           </TouchableOpacity>
@@ -404,18 +460,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-  addressContainer: {
-    padding: 15,
-    backgroundColor: '#f1f1f1',
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  addressTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    color: '#333',
-  },
   paymentModeContainer: {
     marginTop: 20,
     padding: 15,
@@ -454,8 +498,65 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalText: {
-  fontSize: 20,
-  fontWeight: 'bold',
-  color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
   },
-  });    
+  addressListContainer: {
+    marginTop: 20,
+  },
+  addressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    marginBottom: 15,
+  },
+  addressTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  addAddressButton: {
+    backgroundColor: '#28a745',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    width: 130,
+    alignItems: 'center',
+  },
+  addAddressText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  addressList: {
+    paddingVertical: 10,
+  },
+  addressItem: {
+    backgroundColor: '#f8f9fa',
+    padding: 15,
+    borderRadius: 10,
+    marginRight: 15,
+    width: 250,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  selectedAddressItem: {
+    borderColor: '#007bff',
+    borderWidth: 2,
+    backgroundColor: '#e7f1ff',
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
+  },
+  emptyAddressText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 10,
+    paddingVertical: 10,
+  },
+});

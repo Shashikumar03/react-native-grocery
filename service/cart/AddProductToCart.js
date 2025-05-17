@@ -12,7 +12,7 @@ export const addProductToCart = async ( userId,productId, quantity) => {
         };
 
         const response = await axios.post(url, payload); 
-
+        console.log("add product to card response :", response.data)
         return {
             success: true,
             data: response.data,

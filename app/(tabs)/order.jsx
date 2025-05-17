@@ -11,7 +11,7 @@ import {
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { getOrderHistory } from '../../service/order/OrderHistory';
-import { getUserId } from '../../utils/token';
+import { getCurrentUserId } from '../../utils/token';
 import { cancelUserOrder } from '../../service/order/cancelUserOrder';
 
 export default function Order() {
@@ -21,7 +21,7 @@ export default function Order() {
 
   const getUserOrderHistory = async () => {
     setRefreshing(true);
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     const response = await getOrderHistory(userId);
     if (response.success) {
       const sortedOrders = response.data.sort((a, b) => b.orderId - a.orderId);
@@ -109,7 +109,12 @@ export default function Order() {
       )}
 
       <Text style={styles.sectionHeader}>Delivery:</Text>
+      <Text style={styles.deliveryStatus}>Address: {item.address}</Text>
+      <Text style={styles.deliveryStatus}>City: {item.city}</Text>
+      <Text style={styles.deliveryStatus}>Pin: {item.pin}</Text>
       <Text style={styles.deliveryStatus}>Delivery Status: {item.deliveryDto?.deliveryStatus}</Text>
+
+
 
       {/* Cancel Button */}
       {item.orderStatus === 'PENDING' && (

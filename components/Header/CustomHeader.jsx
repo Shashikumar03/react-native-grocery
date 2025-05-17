@@ -93,7 +93,7 @@ export default function CustomHeader() {
           </Animated.Text>
         </View>
         <TouchableOpacity onPress={handleFetchUserDetails}>
-          <Octicons name="feed-person" size={30} color="black" />
+          <Octicons name="feed-person" size={38} color="black" />
         </TouchableOpacity>
       </View>
 

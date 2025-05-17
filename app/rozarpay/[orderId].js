@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Buffer } from 'buffer';
 
 import { getPaymentOrder } from '../../service/rozarpay/rozerpay';
 import { updatePayment } from '../../service/payment/UpdatePayment';
-import { getDeliveryAddressId, getUserId } from '../../utils/token';
+import { getCurrentUserId, getUserId } from '../../utils/token';
 
 export default function RazorpayPaymentScreen() {
   const router = useRouter();
@@ -17,13 +17,15 @@ export default function RazorpayPaymentScreen() {
   const [rozerpayId, setRozerpayId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [deliveryAddressId, setDeliveryAddressId] = useState(null);
+  const { orderId } = useLocalSearchParams();
 
   // Step 1: Fetch IDs and then create order
   useEffect(() => {
+    console.log("shashi address id", orderId)
     const init = async () => {
       try {
-        const addressId = await getDeliveryAddressId();
-        const storedUserId = await getUserId();
+        const addressId = orderId;
+        const storedUserId = await getCurrentUserId();
 
         if (!addressId || !storedUserId) {
           if (!addressId) {
