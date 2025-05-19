@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { searchProduct } from '../../service/product/SearchProduct';
 import { addProductToCart } from '../../service/cart/AddProductToCart';
 import { getCartItems } from '../../service/cart/GetCartItems';
-import { getUserId } from '../../utils/token';
+import { getCurrentUserId } from '../../utils/token';
 
 const Loader = () => {
   const rotate = new Animated.Value(0);
@@ -83,7 +83,7 @@ export default function SearchScreen() {
 
   const fetchCartItems = async () => {
     try {
-      const userId = await getUserId();
+      const userId = await getCurrentUserId();
       const res = await getCartItems(userId);
       if (res.success && res.data?.cartItemsDto) {
         let count = 0;
@@ -132,7 +132,7 @@ export default function SearchScreen() {
 
   const handleAddToCart = async (productId) => {
     setAddingToCartProductId(productId);
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     try {
       await addProductToCart(userId, productId, 1);
       setSuccessMessage('Item added to cart successfully!');

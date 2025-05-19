@@ -107,6 +107,7 @@ export default function OtpVerification() {
 
       <Text style={styles.title}>OTP Verification</Text>
       <Text style={styles.subtitle}>An OTP was sent to {parsedFormData?.phoneNumber}</Text>
+      <Text style={styles.subtitle}>Try with Dummy OTP: 1 1 1 1 1 1</Text>
 
       <View style={styles.otpContainer}>
         {otp.map((digit, index) => (

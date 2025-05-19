@@ -47,7 +47,9 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.welcome}>{isLoggedIn ? 'Welcome TO BAZZARIO' : 'Please login to continue'}</Text>
+      <Text style={styles.welcome}>
+        {isLoggedIn ? 'Welcome TO BAZZARIO' : 'Please login to continue'}
+      </Text>
 
       <TextInput
         placeholder="Email"
@@ -56,6 +58,7 @@ export default function Login() {
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
+        placeholderTextColor="#000" // Ensures placeholder is black
       />
 
       <TextInput
@@ -64,6 +67,7 @@ export default function Login() {
         style={styles.input}
         onChangeText={setPassword}
         secureTextEntry
+        placeholderTextColor="#000" // Ensures placeholder is black
       />
 
       <Button title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
@@ -76,11 +80,28 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, justifyContent: 'center' },
-  welcome: { fontSize: 18, marginBottom: 20, textAlign: 'center' },
-  input: {
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 5,
-    padding: 10, marginBottom: 15
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+    backgroundColor: '#fff', // Optional: enforce light background
   },
-  register: { color: '#007bff', marginTop: 15, textAlign: 'center' },
+  welcome: {
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 15,
+    color: '#000', // Ensures input text is also black
+  },
+  register: {
+    color: '#007bff',
+    marginTop: 15,
+    textAlign: 'center',
+  },
 });

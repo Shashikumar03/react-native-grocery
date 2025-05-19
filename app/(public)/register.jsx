@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, Alert, StyleSheet, Text, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  TextInput,
+  Button,
+  Alert,
+  StyleSheet,
+  Text,
+  ScrollView,
+  ActivityIndicator
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { sendOtp } from '../../service/sms/Sms';
 
@@ -12,7 +21,7 @@ export default function Register() {
     role: 'CUSTOMER',
     phoneNumber: '',
   });
-  const [loading, setLoading] = useState(false); // 👈 Loading state
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleChange = (key, value) => {
@@ -48,12 +57,11 @@ export default function Register() {
     const updatedForm = { ...form, phoneNumber: formattedPhoneNumber };
 
     try {
-      setLoading(true); // 👈 Start loading
+      setLoading(true);
       const result = await sendOtp(formattedPhoneNumber);
       console.log("result of send otp: ", result.data);
 
       if (result.success) {
-        // Clear fields after successful OTP sending
         setForm({
           name: '',
           email: '',
@@ -72,7 +80,7 @@ export default function Register() {
     } catch (err) {
       Alert.alert('Error', 'Something went wrong');
     } finally {
-      setLoading(false); // 👈 Stop loading
+      setLoading(false);
     }
   };
 
@@ -85,6 +93,7 @@ export default function Register() {
         style={styles.input}
         onChangeText={(val) => handleChange('name', val)}
         value={form.name}
+        placeholderTextColor="#000"
       />
 
       <TextInput
@@ -93,6 +102,7 @@ export default function Register() {
         style={styles.input}
         onChangeText={(val) => handleChange('email', val)}
         value={form.email}
+        placeholderTextColor="#000"
       />
 
       <TextInput
@@ -101,6 +111,7 @@ export default function Register() {
         style={styles.input}
         onChangeText={(val) => handleChange('password', val)}
         value={form.password}
+        placeholderTextColor="#000"
       />
 
       <TextInput
@@ -108,6 +119,7 @@ export default function Register() {
         style={styles.input}
         onChangeText={(val) => handleChange('address', val)}
         value={form.address}
+        placeholderTextColor="#000"
       />
 
       <TextInput
@@ -116,6 +128,7 @@ export default function Register() {
         style={styles.input}
         onChangeText={(val) => handleChange('phoneNumber', val)}
         value={form.phoneNumber}
+        placeholderTextColor="#000"
       />
 
       <View style={styles.button}>
@@ -148,6 +161,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderRadius: 8,
     fontSize: 16,
+    color: '#000', // ensures text color is black
   },
   button: {
     marginTop: 10,
