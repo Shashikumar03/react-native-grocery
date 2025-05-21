@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   addressTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
   },

@@ -1,5 +1,5 @@
 {
-  "name": "bazario",
+  "name": "grocery-app",
   "main": "expo-router/entry",
   "version": "1.0.1",
   "scripts": {
@@ -18,6 +18,8 @@
     "@clerk/clerk-expo": "^2.11.4",
     "@expo/metro-config": "^0.20.14",
     "@expo/vector-icons": "^14.0.2",
+    "@react-native-firebase/app": "^22.2.0",
+    "@react-native-firebase/messaging": "^22.2.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/stack": "^7.2.10",
     "axios": "^1.7.7",
@@ -26,10 +28,12 @@
     "expo-av": "~15.1.4",
     "expo-camera": "~16.1.6",
     "expo-constants": "~17.1.6",
+    "expo-device": "~7.1.4",
     "expo-font": "~13.3.1",
     "expo-linear-gradient": "~14.1.4",
     "expo-linking": "~7.1.5",
     "expo-location": "~18.1.5",
+    "expo-notifications": "~0.31.2",
     "expo-router": "~5.0.7",
     "expo-secure-store": "~14.2.3",
     "expo-splash-screen": "~0.30.8",
@@ -55,8 +59,7 @@
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
     "yet": "^0.1.0",
-    "expo-notifications": "~0.31.2",
-    "expo-device": "~7.1.4"
+    "@react-native-async-storage/async-storage": "2.1.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -17,7 +17,6 @@ export default function Register() {
     name: '',
     email: '',
     password: '',
-    address: '',
     role: 'CUSTOMER',
     phoneNumber: '',
   });
@@ -34,9 +33,9 @@ export default function Register() {
   };
 
   const handleSubmit = async () => {
-    const { name, email, password, address, phoneNumber } = form;
+    const { name, email, password, phoneNumber } = form;
 
-    if (!name || !email || !password || !address || !phoneNumber) {
+    if (!name || !email || !password || !phoneNumber) {
       Alert.alert('Validation Error', 'All fields are required');
       return;
     }
@@ -66,7 +65,6 @@ export default function Register() {
           name: '',
           email: '',
           password: '',
-          address: '',
           role: 'CUSTOMER',
           phoneNumber: '',
         });
@@ -115,14 +113,6 @@ export default function Register() {
       />
 
       <TextInput
-        placeholder="Address"
-        style={styles.input}
-        onChangeText={(val) => handleChange('address', val)}
-        value={form.address}
-        placeholderTextColor="#000"
-      />
-
-      <TextInput
         placeholder="Phone Number"
         keyboardType="phone-pad"
         style={styles.input}
@@ -161,7 +151,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderRadius: 8,
     fontSize: 16,
-    color: '#000', // ensures text color is black
+    color: '#000',
   },
   button: {
     marginTop: 10,
