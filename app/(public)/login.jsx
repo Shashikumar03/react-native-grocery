@@ -1,17 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Alert,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { userLogin } from '../../service/Login/Login';
 import { saveTokenForUser, getToken } from '../../utils/token';
 import { router } from 'expo-router';
 
+const { width, height } = Dimensions.get('window');
+
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Fade-in animation on mount
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+
+    // Check login status
     const checkLogin = async () => {
       const token = await getToken();
       if (token) setIsLoggedIn(true);
@@ -20,14 +47,17 @@ export default function Login() {
   }, []);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Missing Credentials', 'Please enter both email and password.');
+    if (!identifier) {
+      Alert.alert('Missing Input', 'Please enter email or mobile number.');
       return;
     }
 
+    const isMobile = /^[6-9]\d{9}$/.test(identifier.trim());
+    const formattedIdentifier = isMobile ? `+91${identifier.trim()}` : identifier.trim();
+
     setLoading(true);
     try {
-      const res = await userLogin(email, password);
+      const res = await userLogin(formattedIdentifier);
       const token = res.data.jwtToken;
       const userId = res.data.user.id;
 
@@ -46,62 +76,152 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.welcome}>
-        {isLoggedIn ? 'Welcome TO BAZZARIO' : 'Please login to continue'}
-      </Text>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#1E3A8A', '#3B82F6']}
+        style={styles.background}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
+        >
+          <Animated.View style={[styles.formContainer, { opacity: fadeAnim }]}>
+            <Text style={styles.title}>Bazzario</Text>
+            <Text style={styles.subtitle}>
+              {isLoggedIn ? 'Welcome Back!' : 'Login to Continue'}
+            </Text>
 
-      <TextInput
-        placeholder="Email"
-        value={email}
-        style={styles.input}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholderTextColor="#000" // Ensures placeholder is black
-      />
+            <TextInput
+              placeholder="Email or Mobile Number"
+              value={identifier}
+              style={[styles.input, isFocused && styles.inputFocused]}
+              onChangeText={setIdentifier}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholderTextColor="#6B7280"
+              accessibilityLabel="Email or mobile number input"
+              accessibilityHint="Enter your email address or mobile number to login"
+            />
 
-      <TextInput
-        placeholder="Password"
-        value={password}
-        style={styles.input}
-        onChangeText={setPassword}
-        secureTextEntry
-        placeholderTextColor="#000" // Ensures placeholder is black
-      />
+            <TouchableOpacity
+              onPress={handleLogin}
+              disabled={loading}
+              style={styles.loginButton}
+              accessibilityLabel="Login button"
+              accessibilityHint="Submits your login credentials"
+              accessibilityRole="button"
+            >
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                style={styles.buttonGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Login</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
 
-      <Button title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
-
-      <TouchableOpacity onPress={() => router.push('/register')}>
-        <Text style={styles.register}>New user? Register here</Text>
-      </TouchableOpacity>
-    </View>
+            <TouchableOpacity
+              onPress={() => router.push('/register')}
+              accessibilityLabel="Register link"
+              accessibilityHint="Navigates to the registration page"
+              accessibilityRole="button"
+            >
+              <Text style={styles.registerText}>New user? Register here</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    backgroundColor: '#fff', // Optional: enforce light background
   },
-  welcome: {
-    fontSize: 18,
-    marginBottom: 20,
+  background: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  formContainer: {
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    marginHorizontal: 16,
+    paddingVertical: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#F9FAFB',
+    marginBottom: 24,
     textAlign: 'center',
   },
   input: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 15,
-    color: '#000', // Ensures input text is also black
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    fontSize: 16,
+    color: '#1F2937',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  register: {
-    color: '#007bff',
-    marginTop: 15,
+  inputFocused: {
+    borderColor: '#10B981',
+    shadowOpacity: 0.2,
+  },
+  loginButton: {
+    width: '100%',
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  buttonGradient: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  registerText: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '500',
     textAlign: 'center',
   },
 });

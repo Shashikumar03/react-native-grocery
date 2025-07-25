@@ -18,6 +18,7 @@
     "@clerk/clerk-expo": "^2.11.4",
     "@expo/metro-config": "^0.20.14",
     "@expo/vector-icons": "^14.0.2",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-firebase/app": "^22.2.0",
     "@react-native-firebase/messaging": "^22.2.0",
     "@react-navigation/native": "^7.0.14",
@@ -30,7 +31,8 @@
     "expo-constants": "17.1.7",
     "expo-device": "~7.1.4",
     "expo-font": "13.3.2",
-    "expo-linear-gradient": "14.1.5",
+    "expo-haptics": "~14.1.4",
+    "expo-linear-gradient": "^14.1.5",
     "expo-linking": "7.1.7",
     "expo-location": "18.1.6",
     "expo-notifications": "0.31.4",
@@ -42,6 +44,7 @@
     "expo-updates": "0.28.17",
     "expo-web-browser": "14.2.0",
     "install": "^0.13.0",
+    "jest-expo": "53.0.9",
     "jwt-decode": "^4.0.0",
     "metro": "^0.82.0",
     "react": "19.0.0",
@@ -58,9 +61,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
-    "yet": "^0.1.0",
-    "@react-native-async-storage/async-storage": "2.1.2",
-    "jest-expo": "53.0.9"
+    "yet": "^0.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
