@@ -10,7 +10,7 @@ import { getCurrentUserId, getUserId } from '../../utils/token';
 
 export default function RazorpayPaymentScreen() {
   const router = useRouter();
-  const razorpayKey = 'rzp_test_O8N5m4YSInMmSC';
+  const razorpayKey = 'rzp_live_UDn0rqtiftjbPd';
 
   const [paymentUrl, setPaymentUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);

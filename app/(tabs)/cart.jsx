@@ -176,6 +176,7 @@ export default function Cart() {
     const orderAmount = totalAmount.toFixed(2);
     if (paymentMode === 'online') {
       const orderId = selectedAddress.deliveryAddressId;
+      console.log("razorpayId: ", orderId)
       router.push(`/rozarpay/${orderId}`);
     } else {
       const userId = await getCurrentUserId();

@@ -4,6 +4,7 @@ import { getBaseUrl } from "../../constants/Baseurl";
 export const cancelUserOrder = async (orderId) => {
 
     try{
+        console.log("order id for cancellation", orderId)
         const url = `${getBaseUrl()}/api/place-order/cancel/${orderId}?reason=lost`;
         const response = await axios.post(url); 
         console.log("order id which will cancel",orderId)
@@ -16,6 +17,7 @@ export const cancelUserOrder = async (orderId) => {
         };
 
     }catch(error){
+        console.log("response of cancel", error.response.data)
         const errorData = error.response ? error.response.data : { message: "Network error" };
         const errorStatus = error.response ? error.response.status : 500;
 
