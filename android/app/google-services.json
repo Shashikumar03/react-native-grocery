@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1042871578096:android:3f64a52a5f08d411d58135",
+        "mobilesdk_app_id": "1:1042871578096:android:4da2c85eb1a8e4c8d58135",
         "android_client_info": {
-          "package_name": "com.shashi03.Groceryapp"
+          "package_name": "com.shashi03.Bazzario"
         }
       },
       "oauth_client": [],

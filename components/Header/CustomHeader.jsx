@@ -87,7 +87,7 @@ export default function CustomHeader() {
     <Animated.View style={[styles.mainContainer, { backgroundColor }]}>
       <View style={styles.headerTop}>
         <View>
-          <Text style={styles.appName}>Bazaario app</Text>
+          <Text style={styles.appName}>Bazzario app</Text>
           <Animated.Text style={[styles.deliveryInfo, { opacity: blinkAnim }]}>
             Delivery in 20 Min
           </Animated.Text>

@@ -55,7 +55,7 @@ export default function Home() {
       <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
       <View style={styles.fixedTop}>
         <CustomHeader />
-        <HomeCategory />
+        {/* <HomeCategory /> */}
       </View>
       <View style={styles.contentContainer}>
         <AllCategoriesFromApi />

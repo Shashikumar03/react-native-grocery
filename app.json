@@ -14,14 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.shashi03.Groceryapp"
+      "bundleIdentifier": "com.shashi03.Bazzario"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.shashi03.Groceryapp",
+      "package": "com.shashi03.Bazzario",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
