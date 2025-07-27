@@ -6,8 +6,7 @@ import { saveTokenForUser, getToken } from '../../utils/token';
 import { router } from 'expo-router';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState(''); // Can hold email or mobile
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -20,14 +19,22 @@ export default function Login() {
   }, []);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Missing Credentials', 'Please enter both email and password.');
+    if (!identifier) {
+      Alert.alert('Missing Info', 'Please enter your email or mobile number.');
       return;
+    }
+
+    // If identifier is mobile number, prepend +91
+    let formattedIdentifier = identifier;
+    const isMobile = /^[0-9]{10}$/.test(identifier);
+    if (isMobile) {
+      formattedIdentifier = `+91${identifier}`;
     }
 
     setLoading(true);
     try {
-      const res = await userLogin(email, password);
+      // Updated userLogin to send identifier without password
+      const res = await userLogin(formattedIdentifier); 
       const token = res.data.jwtToken;
       const userId = res.data.user.id;
 
@@ -52,22 +59,13 @@ export default function Login() {
       </Text>
 
       <TextInput
-        placeholder="Email"
-        value={email}
+        placeholder="Email or Mobile Number"
+        value={identifier}
         style={styles.input}
-        onChangeText={setEmail}
+        onChangeText={setIdentifier}
         autoCapitalize="none"
-        keyboardType="email-address"
-        placeholderTextColor="#000" // Ensures placeholder is black
-      />
-
-      <TextInput
-        placeholder="Password"
-        value={password}
-        style={styles.input}
-        onChangeText={setPassword}
-        secureTextEntry
-        placeholderTextColor="#000" // Ensures placeholder is black
+        keyboardType="email-address" // allows email but you may change to 'phone-pad'
+        placeholderTextColor="#000"
       />
 
       <Button title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
@@ -84,12 +82,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     justifyContent: 'center',
-    backgroundColor: '#fff', // Optional: enforce light background
+    backgroundColor: '#f0f8ff', // ✅ Custom background color
   },
   welcome: {
     fontSize: 18,
     marginBottom: 20,
     textAlign: 'center',
+    color: '#000',
   },
   input: {
     borderWidth: 1,
@@ -97,7 +96,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     marginBottom: 15,
-    color: '#000', // Ensures input text is also black
+    color: '#000',
+    backgroundColor: '#fff', // ✅ Input background
   },
   register: {
     color: '#007bff',

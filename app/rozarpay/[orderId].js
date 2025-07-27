@@ -10,7 +10,7 @@ import { getCurrentUserId, getUserId } from '../../utils/token';
 
 export default function RazorpayPaymentScreen() {
   const router = useRouter();
-  const razorpayKey = 'rzp_test_O8N5m4YSInMmSC';
+  const razorpayKey = 'rzp_live_UDn0rqtiftjbPd';
 
   const [paymentUrl, setPaymentUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +61,7 @@ export default function RazorpayPaymentScreen() {
                       key: "${razorpayKey}",
                       amount: "${amount}",
                       currency: "INR",
-                      name: "Bazaario",
+                      name: "Bazzario",
                       description: "Purchase Order #${response.data.orderId}",
                       image: "https://firebasestorage.googleapis.com/v0/b/grocery-app-6fe52.appspot.com/o/images%2F35992.jpg?alt=media&token=61f73fcb-c97e-4bbb-8002-a2d2217f459d",
                       order_id: "${rozerpayId}",
