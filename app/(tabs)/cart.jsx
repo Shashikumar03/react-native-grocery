@@ -195,7 +195,7 @@ export default function Cart() {
 
   const doPayment = async () => {
     if (!selectedAddress) {
-      Alert.alert('No Address Selected', 'Please select a delivery address before placing the order.');
+      Alert.alert('No Address Selected', 'कृपया delivery address चुनें.');
       return;
     }
 
