@@ -44,7 +44,7 @@ export default function RazorpayPaymentScreen() {
         // Step 2: Once IDs are available, create order
         const response = await getPaymentOrder(storedUserId, addressId, "ONLINE");
 
-        if (response.status) {
+        if (response.success) {
           const { rozerpayId, paymentAmount } = response.data.paymentDto;
           const amount = paymentAmount * 100;
           setRozerpayId(rozerpayId);
@@ -108,11 +108,13 @@ export default function RazorpayPaymentScreen() {
           const base64Html = Buffer.from(razorpayHTML).toString('base64');
           setPaymentUrl(`data:text/html;base64,${base64Html}`);
         } else {
-          Alert.alert('Error', 'Failed to create order. Please try again.');
+          console.error('Failed to create order check:', response.data.message);
+          Alert.alert("error",response.data.message);
+          router.replace("/cart");
         }
       } catch (error) {
-        console.error('Error:', error);
-        Alert.alert('Error', 'Something went wrong. Please try again.');
+        console.error('Error sha:', error);
+        Alert.alert('Error', response.data || 'An unexpected error occurred.');
       } finally {
         setIsLoading(false);
       }
@@ -126,6 +128,7 @@ export default function RazorpayPaymentScreen() {
     try {
       if (!rozerpayId || !paymentId) return;
       await updatePayment(rozerpayId, paymentStatus, paymentId);
+
     } catch (err) {
       console.error("Error updating payment status:", err);
     }
