@@ -10,6 +10,7 @@ import { getCartItems } from '../../service/cart/GetCartItems';
 import { getCurrentUserId } from '../../utils/token';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { registerForPushNotificationsAsync } from '../../components/Push';
+import { requestLocationPermission, sendLocationToBackend, requestBackgroundLocationPermission, startBackgroundLocationTracking } from '../../service/location/requestLocationPermission';
 import { useRouter } from 'expo-router';
 
 // ✅ Set up notification handler globally
@@ -49,7 +50,27 @@ export default function Home() {
       }
     };
 
+    const setupLocationPermission = async () => {
+      try {
+        const { granted } = await requestLocationPermission();
+        if (granted) {
+          console.log('📍 Location permission granted');
+          await sendLocationToBackend();
+
+          // Request background permission and start background location tracking
+          const { granted: bgGranted } = await requestBackgroundLocationPermission();
+          if (bgGranted) {
+            await startBackgroundLocationTracking();
+            console.log('📍 Background location tracking started');
+          }
+        }
+      } catch (err) {
+        console.error('Location permission error:', err);
+      }
+    };
+
     setupPushNotifications();
+    setupLocationPermission();
     fetchCartCount();
 
     // Listen for notifications received in foreground

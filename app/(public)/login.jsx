@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, Alert, StyleSheet, TouchableOpacity } fr
 import { useNavigation } from '@react-navigation/native';
 import { userLogin } from '../../service/Login/Login';
 import { saveTokenForUser, getToken } from '../../utils/token';
+import { saveSimFingerprint } from '../../service/sim/SimChangeDetection';
 import { router } from 'expo-router';
 
 export default function Login() {
@@ -40,6 +41,7 @@ export default function Login() {
 
       if (token && userId) {
         await saveTokenForUser(userId, token);
+        await saveSimFingerprint();
         router.push('/home');
       } else {
         Alert.alert('Login Failed', 'Invalid credentials received.');

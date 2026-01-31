@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Button, ActivityIndicator, Alert, Modal, ScrollView } from 'react-native';
 import { getToken, removeToken, clearSession } from '../../utils/token';
+import { clearStoredSimFingerprint } from '../../service/sim/SimChangeDetection';
 import { useRouter } from 'expo-router';
 import { getLoginUserDetails } from '../../service/Login/GetLoginUserDetails';
 import { getUserById } from '../../service/Login/userUserById';
@@ -54,6 +55,7 @@ export default function CurrentUser() {
           try {
             await removeToken();
             await clearSession();
+            await clearStoredSimFingerprint();
             router.replace('/login');
           } catch {
             Alert.alert('Error', 'Something went wrong during logout.');
