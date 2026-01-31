@@ -10,7 +10,7 @@ export function useAuth() {
   useEffect(() => {
     async function checkToken() {
       const token = await getToken();
-      console.log("🔐 Retrieved token:", token); // Debugging token
+      console.log("🔐 Retrieved token124:", token); // Debugging token
 
       if (token) {
         setIsSignedIn(true)

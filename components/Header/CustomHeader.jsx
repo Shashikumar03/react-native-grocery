@@ -1,14 +1,14 @@
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Image } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import Octicons from '@expo/vector-icons/Octicons';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
+import InfoBanner from './InfoBanner';
 
 export default function CustomHeader() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const translateYAnim = useRef(new Animated.Value(0)).current;
   const backgroundAnim = useRef(new Animated.Value(0)).current;
-  const blinkAnim = useRef(new Animated.Value(1)).current;
   const router = useRouter();
 
   const placeholderOptions = ["onion", "egg", "milk", "paneer", "oil", "apple"];
@@ -56,23 +56,6 @@ export default function CustomHeader() {
     outputRange: backgroundColors,
   });
 
-  // Blinking delivery text
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(blinkAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(blinkAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
 
   const handleFetchUserDetails = () => {
     router.push("/user/current-user");
@@ -86,25 +69,25 @@ export default function CustomHeader() {
   return (
     <Animated.View style={[styles.mainContainer, { backgroundColor }]}>
       <View style={styles.headerTop}>
-        <View>
-          <Text style={styles.appName}>Bazzario app</Text>
-          <Animated.Text style={[styles.deliveryInfo, { opacity: blinkAnim }]}>
-            Delivery in 20 Min
-          </Animated.Text>
+        <View style={styles.headerLeft}>
+          {/* <Image source={require('../../assets/images/icon.png')} style={styles.logo} /> */}
+          <View>
+            <Text style={styles.appName}>Bazzario</Text>
+            <Text style={styles.deliveryInfo}>Delivery in 20 Min</Text>
+          </View>
         </View>
-        <TouchableOpacity onPress={handleFetchUserDetails}>
-          <Octicons name="feed-person" size={38} color="black" />
-        </TouchableOpacity>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={handleFetchUserDetails} style={styles.iconBtn}>
+            <Octicons name="feed-person" size={36} color="black" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSearchPress} style={styles.iconBtn}>
+            <Ionicons name="search" size={28} color="black" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <TouchableOpacity onPress={handleSearchPress}>
-        <View style={styles.searchBarContainer}>
-          <Ionicons name="search" size={24} color="black" />
-          <Animated.Text style={[styles.searchText, { transform: [{ translateY: translateYAnim }] }]}>
-            {placeholderOptions[placeholderIndex]}
-          </Animated.Text>
-        </View>
-      </TouchableOpacity>
+      <InfoBanner id="release-2026-01-30" message="New: Faster checkout and improved cart UX — tap the cart to view items." type="info" duration={0} />
     </Animated.View>
   );
 }
@@ -140,4 +123,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "gray",
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  logo: { width: 48, height: 48, marginRight: 12, borderRadius: 8 },
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
+  iconBtn: { marginLeft: 8, padding: 6 },
 });

@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+
+// simple in-memory cache shared across mounts
+let searchCache = { term: null, results: null };
 import {
   View,
   TextInput,
@@ -56,29 +59,49 @@ export default function SearchScreen() {
   const [results, setResults] = useState([]);
   const [quantities, setQuantities] = useState({});
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [addingToCartProductId, setAddingToCartProductId] = useState(null);
+  const allResultsRef = useRef([]); // cache full results for client-side paging
+  // module-level cache to persist results across mounts during app run
+  // shape: { term: string|null, results: array }
+  // using top-level var so cache survives unmount/remount of this component
+  // (keeps behavior: load once, reuse on subsequent visits)
+  
+  const pageRef = useRef(1);
+  const PAGE_SIZE = 5;
 
+  // initial load: fetch cart count and first page of products
   useEffect(() => {
     const initialize = async () => {
       await fetchCartItems();
-      if (searchTerm.trim()) {
-        fetchResults();
+      // if cached results exist (from previous visit), reuse them instead of fetching again
+      if (searchCache.results && (!searchCache.term || searchCache.term === '')) {
+        allResultsRef.current = searchCache.results;
+        pageRef.current = 1;
+        const slice = allResultsRef.current.slice(0, PAGE_SIZE);
+        setResults(slice);
+        const updatedQuantities = { ...quantities };
+        allResultsRef.current.forEach((item) => {
+          if (updatedQuantities[item.id] === undefined) updatedQuantities[item.id] = 0;
+        });
+        setQuantities(updatedQuantities);
       } else {
-        fetchAllProducts();
+        await fetchAllProducts(1);
       }
     };
     initialize();
   }, []);
 
+  // debounce searchTerm so we don't call API on every keystroke
   useEffect(() => {
-    if (searchTerm.trim()) {
-      fetchResults();
-    } else {
-      fetchAllProducts();
-    }
+    const t = setTimeout(() => {
+      if (searchTerm.trim()) fetchResults(searchTerm, 1);
+      else fetchAllProducts(1);
+    }, 300);
+    return () => clearTimeout(t);
   }, [searchTerm]);
 
   const fetchCartItems = async () => {
@@ -97,37 +120,57 @@ export default function SearchScreen() {
     }
   };
 
-  const fetchAllProducts = async () => {
-    setLoading(true);
-    const res = await searchProduct('');
-    if (res.success) {
-      setResults(res.data);
-      const updatedQuantities = { ...quantities };
-      res.data.forEach((item) => {
-        if (updatedQuantities[item.id] === undefined) {
-          updatedQuantities[item.id] = 0;
-        }
-      });
-      setQuantities(updatedQuantities);
+  // fetch all products once, but only set first page for the UI (client-side paging)
+  const fetchAllProducts = async (page = 1) => {
+    if (page === 1) setLoading(true);
+    try {
+      const res = await searchProduct('');
+      if (res.success) {
+        allResultsRef.current = res.data || [];
+        // persist to module cache so subsequent mounts can reuse
+        searchCache = { term: null, results: allResultsRef.current };
+        pageRef.current = 1;
+        const slice = allResultsRef.current.slice(0, PAGE_SIZE);
+        setResults(slice);
+        const updatedQuantities = { ...quantities };
+        allResultsRef.current.forEach((item) => {
+          if (updatedQuantities[item.id] === undefined) updatedQuantities[item.id] = 0;
+        });
+        setQuantities(updatedQuantities);
+      }
+    } catch (err) {
+      console.error('fetchAllProducts error', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
   };
 
-  const fetchResults = async () => {
-    if (!searchTerm.trim()) return;
-    setLoading(true);
-    const res = await searchProduct(searchTerm);
-    if (res.success) {
-      setResults(res.data);
-      const updatedQuantities = { ...quantities };
-      res.data.forEach((item) => {
-        if (updatedQuantities[item.id] === undefined) {
-          updatedQuantities[item.id] = 0;
-        }
-      });
-      setQuantities(updatedQuantities);
+  // search with client-side paging (cache results then show first page)
+  const fetchResults = async (term, page = 1) => {
+    if (!term) return;
+    if (page === 1) setLoading(true);
+    try {
+      const res = await searchProduct(term);
+      if (res.success) {
+        allResultsRef.current = res.data || [];
+        // persist search results for this term
+        searchCache = { term, results: allResultsRef.current };
+        pageRef.current = 1;
+        const slice = allResultsRef.current.slice(0, PAGE_SIZE);
+        setResults(slice);
+        const updatedQuantities = { ...quantities };
+        allResultsRef.current.forEach((item) => {
+          if (updatedQuantities[item.id] === undefined) updatedQuantities[item.id] = 0;
+        });
+        setQuantities(updatedQuantities);
+      }
+    } catch (err) {
+      console.error('fetchResults error', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
   };
 
   const handleAddToCart = async (productId) => {
@@ -138,6 +181,9 @@ export default function SearchScreen() {
       setSuccessMessage('Item added to cart successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
       fetchCartItems();
+      // refresh stock/availability by refetching current search/page (light)
+      if (searchTerm.trim()) fetchResults(searchTerm, 1);
+      else fetchAllProducts(1);
     } catch (err) {
       console.error('Error adding product to cart', err);
     } finally {
@@ -145,17 +191,10 @@ export default function SearchScreen() {
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchResults();
-    await fetchCartItems();
-    setRefreshing(false);
-  };
-
-  const renderItem = ({ item }) => {
+  // Memoized presentational card to avoid unnecessary re-renders
+  const ProductCard = React.memo(({ item, isLoading, onAdd }) => {
     const originalPrice = item.price + Math.ceil(item.price * 0.1);
     const discountVal = Math.ceil(item.price * 0.1);
-    const isLoading = addingToCartProductId === item.id;
 
     return (
       <View style={styles.card}>
@@ -172,7 +211,7 @@ export default function SearchScreen() {
           {item.available ? (
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={() => handleAddToCart(item.id)}
+              onPress={() => onAdd(item.id)}
               disabled={isLoading}
               activeOpacity={0.7}
             >
@@ -184,7 +223,35 @@ export default function SearchScreen() {
         </View>
       </View>
     );
+  });
+
+  const renderItem = useCallback(({ item }) => {
+    const isLoadingItem = addingToCartProductId === item.id;
+    return <ProductCard item={item} isLoading={isLoadingItem} onAdd={handleAddToCart} />;
+  }, [addingToCartProductId, handleAddToCart]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (searchTerm.trim()) await fetchResults(searchTerm, 1);
+    else await fetchAllProducts(1);
+    await fetchCartItems();
+    setRefreshing(false);
   };
+
+  const loadMore = () => {
+    if (loadingMore) return;
+    const total = allResultsRef.current.length;
+    const nextPage = pageRef.current + 1;
+    const start = (nextPage - 1) * PAGE_SIZE;
+    if (start >= total) return;
+    setLoadingMore(true);
+    const nextSlice = allResultsRef.current.slice(start, start + PAGE_SIZE);
+    setResults((prev) => [...prev, ...nextSlice]);
+    pageRef.current = nextPage;
+    setLoadingMore(false);
+  };
+
+  
 
   return (
     <View style={styles.container}>
@@ -223,6 +290,13 @@ export default function SearchScreen() {
           ListEmptyComponent={<Text style={styles.noResults}>No results found.</Text>}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={{ paddingBottom: 20 }}
+          onEndReachedThreshold={0.6}
+          onEndReached={() => loadMore()}
+          ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 12 }} /> : null}
+          initialNumToRender={PAGE_SIZE}
+          maxToRenderPerBatch={PAGE_SIZE}
+          windowSize={5}
+          removeClippedSubviews={true}
         />
       )}
     </View>

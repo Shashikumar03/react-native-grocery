@@ -12,13 +12,16 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+// not using focus-triggered refetch; component uses an in-memory cache and pull-to-refresh
 
 import { getAllCategories } from '../../../service/category/GetAllCategories';
 import { addProductToCart } from '../../../service/cart/AddProductToCart';
 import { getCurrentUserId } from '../../../utils/token';
 
-export default function AllCategoriesFromApi() {
+// simple in-memory cache for categories to avoid refetching on every mount/focus
+let categoriesCache = null;
+
+export default function AllCategoriesFromApi({ onCartUpdated } = {}) {
   // State variables
   const [allCategories, setAllCategories] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -32,8 +35,15 @@ export default function AllCategoriesFromApi() {
   const getAllCategory = async () => {
     if (!refreshing) setIsLoading(true);
     try {
+      // If cached, use it and avoid network
+      if (categoriesCache && !refreshing) {
+        setAllCategories(categoriesCache);
+        return;
+      }
+
       const response = await getAllCategories();
       if (response.success) {
+        categoriesCache = response.data;
         setAllCategories(response.data);
       } else {
         Alert.alert('Error', 'Failed to load categories. Please try again.');
@@ -47,17 +57,13 @@ export default function AllCategoriesFromApi() {
     }
   };
 
-  // Initial fetch on component mount
+  // Initial fetch on component mount — will use cache if available
   useEffect(() => {
     getAllCategory();
   }, []);
 
-  // Refresh data when screen gains focus
-  useFocusEffect(
-    useCallback(() => {
-      getAllCategory();
-    }, [])
-  );
+  // NOTE: we intentionally do NOT refetch on focus to avoid repeated loads.
+  // Pull-to-refresh will force a network fetch via setting `refreshing`.
 
   // Pull-to-refresh handler
   const onRefresh = () => {
@@ -113,7 +119,8 @@ export default function AllCategoriesFromApi() {
         Alert.alert('Success', 'Product added to cart successfully!');
         setModalVisible(false);
         setQuantity('1'); // reset quantity
-        getAllCategory(); // refresh categories for stock update
+        // notify parent (Home) so it can refresh cart count / show popup
+        if (typeof onCartUpdated === 'function') onCartUpdated();
       } else {
         Alert.alert('Error', response.data?.message || 'Failed to add product to cart.');
       }
@@ -128,31 +135,36 @@ export default function AllCategoriesFromApi() {
   // Render each product card
   const renderProduct = ({ item }) => (
     <View style={[styles.productCard, !item.available && styles.outOfStockCard]}>
-      <TouchableOpacity
-        disabled={!item.available}
-        onPress={() => addProductToCartHandler(item.id)}
-        accessibilityLabel={`Add ${item.name} to cart`}
-        accessibilityRole="button"
-        style={styles.productTouchable}
-      >
+      <View style={styles.imageWrap}>
         <Image
-          source={{ uri: item.imageUrl || 'https://via.placeholder.com/80' }}
+          source={{ uri: item.imageUrl || 'https://via.placeholder.com/120' }}
           style={styles.productImage}
           resizeMode="cover"
         />
-        <Text style={styles.productName} numberOfLines={2}>
-          {item.name}
-        </Text>
-        <Text style={[styles.productAvailability, !item.available && styles.outOfStockText]}>
-          {item.available ? 'Available' : 'Out of Stock'}
-        </Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.originalPrice}>₹{(item.price * 1.1).toFixed(0)}</Text>
-          <Text style={styles.discountText}>10% OFF</Text>
+        {item.available ? (
+          <View style={styles.availableBadge}><Text style={styles.badgeText}>In stock</Text></View>
+        ) : (
+          <View style={styles.outBadge}><Text style={styles.badgeText}>Out</Text></View>
+        )}
+      </View>
+      <View style={styles.productBody}>
+        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+        <Text style={styles.categorySmall} numberOfLines={1}>{item.unit || 'Unit'}</Text>
+        <View style={styles.priceRow}>
+          <View>
+            <Text style={styles.finalPrice}>₹{item.price.toFixed(0)}</Text>
+            <Text style={styles.originalPrice}>₹{(item.price * 1.1).toFixed(0)}</Text>
+          </View>
+          <View style={styles.discountPill}><Text style={styles.discountText}>10% OFF</Text></View>
         </View>
-        <Text style={styles.finalPrice}>
-          ₹{item.price.toFixed(0)} / {item.unit || 'unit'}
-        </Text>
+      </View>
+      <TouchableOpacity
+        style={[styles.addToCartButton, !item.available && styles.addButtonDisabled]}
+        disabled={!item.available || isAddingToCart}
+        onPress={() => addProductToCartHandler(item.id)}
+        accessibilityLabel={`Add ${item.name} to cart`}
+      >
+        {isAddingToCart ? <ActivityIndicator color="#fff" /> : <Text style={styles.addToCartText}>Add</Text>}
       </TouchableOpacity>
     </View>
   );
@@ -164,14 +176,13 @@ export default function AllCategoriesFromApi() {
       <Text style={styles.categoryDescription} numberOfLines={2}>
         {item.description || 'No description available.'}
       </Text>
-      <FlatList
-        data={item.productsDto}
-        keyExtractor={(product) => product.id.toString()}
-        renderItem={renderProduct}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.productsList}
-      />
+      <View style={styles.productsGrid}>
+        {item.productsDto.map((prod) => (
+          <View key={prod.id} style={styles.productWrapper}>
+            {renderProduct({ item: prod })}
+          </View>
+        ))}
+      </View>
     </View>
   );
 
@@ -283,69 +294,51 @@ const styles = StyleSheet.create({
   },
   productCard: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    width: 140,
-    padding: 10,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
+    borderRadius: 12,
+    width: '100%',
+    padding: 12,
+    marginRight: 12,
+    borderWidth: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
   },
+  productsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  productWrapper: { width: '48%', marginBottom: 12 },
   outOfStockCard: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   productTouchable: {
     alignItems: 'center',
   },
+  imageWrap: { alignItems: 'center', marginBottom: 8, position: 'relative' },
   productImage: {
-    width: 80,
-    height: 70,
-    borderRadius: 6,
-    marginBottom: 8,
+    width: 120,
+    height: 100,
+    borderRadius: 8,
     backgroundColor: '#eee',
   },
+  availableBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#e6ffed', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 },
+  outBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#ffecec', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 },
+  badgeText: { fontSize: 11, color: '#0b6b2b', fontWeight: '700' },
   productName: {
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 4,
-    color: '#333',
-  },
-  productAvailability: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#2e7d32',
-    marginBottom: 4,
-  },
-  outOfStockText: {
-    color: 'red',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    justifyContent: 'center',
-  },
-  originalPrice: {
-    fontSize: 12,
-    color: '#888',
-    textDecorationLine: 'line-through',
-    marginRight: 6,
-  },
-  discountText: {
-    fontSize: 12,
-    color: '#2e7d32',
-    fontWeight: 'bold',
-  },
-  finalPrice: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: '700',
+    textAlign: 'left',
+    marginBottom: 6,
+    color: '#222',
   },
+  categorySmall: { fontSize: 12, color: '#666', marginBottom: 6 },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  originalPrice: { fontSize: 12, color: '#888', textDecorationLine: 'line-through' },
+  discountPill: { backgroundColor: '#fff6f0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  discountText: { fontSize: 11, color: '#d35400', fontWeight: '700' },
+  finalPrice: { fontSize: 16, fontWeight: '800', color: '#111' },
+  addToCartButton: { marginTop: 10, backgroundColor: '#28a745', paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  addToCartText: { color: '#fff', fontWeight: '800' },
+  addButtonDisabled: { backgroundColor: '#9bd1a6' },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

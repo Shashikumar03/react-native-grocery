@@ -14,7 +14,11 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Animated } from 'react-native';
+// removed CustomHeader as per request to remove headers
+// import CustomHeader from '../../components/Header/CustomHeader';
+import { Modal } from 'react-native';
 import { getCartItems } from '../../service/cart/GetCartItems';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -36,6 +40,7 @@ export default function Cart() {
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [idOfCart, setIdOfCart] = useState(null);
   const [selectedAddress, setSelectedAddress] = useState(null);
+  const [addressModalVisible, setAddressModalVisible] = useState(false);
   const [paymentMode, setPaymentMode] = useState('online');
   const [userAddresses, setUserAddresses] = useState([]);
   const [deliveryCharge, setDeliveryCharge] = useState(0);
@@ -43,7 +48,9 @@ export default function Cart() {
   const [isPlaceOrderLoading, setIsPlaceOrderLoading] = useState(false);
 
   const router = useRouter();
-
+  
+  // global processing flag: if any per-item button or place-order is loading, freeze other buttons
+  const anyProcessing = isPlaceOrderLoading || (loadingButton && loadingButton.cartItemId !== null);
   useEffect(() => {
     const fetchDeliveryCharge = async () => {
       const response = await getDeliveryCharge();
@@ -99,14 +106,25 @@ export default function Cart() {
     }
   };
 
-  useEffect(() => {
-    getAllDeliveryAddressOfUser1();
+  // data loader will fetch both cart items and addresses together
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadAllData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await Promise.all([getCartItemMethod(), getAllDeliveryAddressOfUser1()]);
+    } catch (e) {
+      console.error('Error loading cart or addresses', e);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      getCartItemMethod();
-    }, [])
+      loadAllData();
+    }, [loadAllData])
   );
 
   // Reset isPlaceOrderLoading when returning to the cart screen (e.g., after canceling online payment)
@@ -118,12 +136,33 @@ export default function Cart() {
     }, [])
   );
 
+  // Ensure user selects an address when opening the cart
+  useFocusEffect(
+    useCallback(() => {
+      if (!selectedAddress) {
+        openAddressModal();
+      }
+    }, [selectedAddress, userAddresses])
+  );
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await getCartItemMethod();
-    await getAllDeliveryAddressOfUser1();
+    await loadAllData();
     setRefreshing(false);
   };
+
+  // skeleton pulse animation
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.4, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [pulse]);
 
   const confirmDeleteItem = (productId, cartItemId) => {
     Alert.alert('Remove Item', 'Are you sure you want to remove this item?', [
@@ -193,6 +232,13 @@ export default function Cart() {
   const handleSelectAddress = (address) => setSelectedAddress(address);
   const handleAddNewAddress = () => router.push('/address/add-address');
 
+  const openAddressModal = () => setAddressModalVisible(true);
+  const closeAddressModal = () => setAddressModalVisible(false);
+  const handleChooseAddress = (address) => {
+    setSelectedAddress(address);
+    closeAddressModal();
+  };
+
   const doPayment = async () => {
     if (!selectedAddress) {
       Alert.alert('No Address Selected', 'कृपया delivery address चुनें.');
@@ -239,18 +285,63 @@ export default function Cart() {
 
   const totalAmount = Math.max(0, (allCartItems.cartTotalPrice || 0) - discount + (allCartItems.cartItemsDto?.length > 0 ? deliveryCharge : 0));
 
+  const subtotal = allCartItems.cartItemsDto?.reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 1), 0) || 0;
   return (
+    <>
+    {/* Fixed top header with selected address */}
+    <View style={styles.topHeader} pointerEvents="box-none">
+      <View style={styles.topHeaderInner}>
+        {selectedAddress ? (
+          <View style={styles.selectedAddressBox}>
+            <Text style={styles.selectedAddressText}>{selectedAddress.address}, {selectedAddress.landmark}, {selectedAddress.city} - {selectedAddress.pin}</Text>
+            <View style={styles.topAddressActions}>
+              <TouchableOpacity style={styles.selectAddressButton} onPress={openAddressModal} disabled={anyProcessing}>
+                <Text style={styles.selectAddressText}>Change</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addAddressButton} onPress={handleAddNewAddress} disabled={anyProcessing}>
+                <Text style={styles.addAddressText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.needAddressBox} onPress={openAddressModal} disabled={anyProcessing}>
+            <Text style={styles.needAddressText}>Please select a delivery address to continue</Text>
+            <Text style={styles.selectAddressText}>Select Address</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingBottom: 30 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      contentContainerStyle={{ paddingBottom: 160, paddingTop: 92 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} enabled={!anyProcessing} />}
     >
       <View style={styles.container}>
-        <Text style={styles.cartTitle}>Cart Items</Text>
         <Text style={{ marginBottom: 10 }}>Pull down to refresh cart items</Text>
 
-        {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? (
-          <Text style={styles.emptyCartText}>No items in the cart</Text>
+        {isLoading ? (
+          <View>
+            <Animated.View style={[styles.skeletonHeader, { opacity: pulse }]} />
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={styles.skeletonItem}>
+                <Animated.View style={[styles.skeletonLine, { opacity: pulse }]} />
+                <Animated.View style={[styles.skeletonLineShort, { opacity: pulse }]} />
+              </View>
+            ))}
+            <Animated.View style={[styles.skeletonBreakdown, { opacity: pulse }]} />
+          </View>
+        ) : null}
+        {!isLoading && allCartItems.cartItemsDto && allCartItems.cartItemsDto.length === 0 ? (
+          <View style={styles.emptyWrapper}>
+            {/* fallback image — ensure file exists or replace with a local asset */}
+            {/* If asset missing, image will be ignored; keeps UI pleasant for empty state */}
+            <Image source={require('../../assets/images/empty-cart.png')} style={styles.emptyImage} />
+            <Text style={styles.emptyCartText}>Your cart is empty</Text>
+            <TouchableOpacity style={styles.shopButton} onPress={() => router.push('/home')}>
+              <Text style={styles.shopButtonText}>Shop Now</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <FlatList
             data={allCartItems.cartItemsDto}
@@ -266,7 +357,7 @@ export default function Cart() {
               <Text style={styles.appliedText}>
                 Applied "{appliedPromo}" - Discount ₹{discount.toFixed(2)}
               </Text>
-              <TouchableOpacity onPress={handleRemovePromoCode} style={styles.removePromoButton}>
+              <TouchableOpacity onPress={handleRemovePromoCode} style={styles.removePromoButton} disabled={anyProcessing}>
                 <Text style={styles.removePromoText}>Remove Promo Code</Text>
               </TouchableOpacity>
             </View>
@@ -278,7 +369,7 @@ export default function Cart() {
                 value={promoCode}
                 onChangeText={setPromoCode}
               />
-              <TouchableOpacity style={styles.applyButton} onPress={handleApplyPromoCode}>
+              <TouchableOpacity style={styles.applyButton} onPress={handleApplyPromoCode} disabled={anyProcessing}>
                 <Text style={{ color: 'white' }}>Apply</Text>
               </TouchableOpacity>
             </View>
@@ -286,98 +377,120 @@ export default function Cart() {
         )}
 
         <View style={styles.paymentModeContainer}>
-          <Text style={styles.addressTitle}>Choose Payment Mode</Text>
-          <View style={styles.paymentOptions}>
+            <View style={styles.paymentOptions}>
             <TouchableOpacity
               style={[styles.paymentOption, paymentMode === 'online' && styles.paymentOptionSelected]}
               onPress={() => setPaymentMode('online')}
+              disabled={anyProcessing}
             >
               <Text style={paymentMode === 'online' ? styles.selectedText : styles.optionText}>Online</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.paymentOption, paymentMode === 'cod' && styles.paymentOptionSelected]}
               onPress={() => setPaymentMode('cod')}
+              disabled={anyProcessing}
             >
               <Text style={paymentMode === 'cod' ? styles.selectedText : styles.optionText}>Cash on Delivery</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length > 0 && (
-          <View style={styles.amountBox}>
-            <Text style={styles.amountText}>
-              Delivery Charge: ₹{deliveryCharge.toFixed(2)}
-            </Text>
-            <Text style={styles.amountText}>
-              Total Amount: ₹{totalAmount.toFixed(2)}
-            </Text>
+        {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length > 0 && selectedAddress && (
+          <View style={[styles.breakdownBox, { marginBottom: 140 }]}>
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Subtotal</Text>
+              <Text style={styles.breakdownValue}>₹{subtotal.toFixed(2)}</Text>
+            </View>
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Discount</Text>
+              <Text style={styles.breakdownValue}>-₹{discount.toFixed(2)}</Text>
+            </View>
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Delivery</Text>
+              <Text style={styles.breakdownValue}>₹{deliveryCharge.toFixed(2)}</Text>
+            </View>
+            <View style={styles.breakdownDivider} />
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownTotalLabel}>Total</Text>
+              <Text style={styles.breakdownTotalValue}>₹{totalAmount.toFixed(2)}</Text>
+            </View>
           </View>
         )}
 
-        <View style={styles.addressListContainer}>
-          <View style={styles.addressHeader}>
-            <Text style={styles.addressTitle}>Choose Delivery Address</Text>
-            <TouchableOpacity style={styles.addAddressButton} onPress={handleAddNewAddress}>
-              <Text style={styles.addAddressText}>Add Address</Text>
-            </TouchableOpacity>
+        {/* address list removed — selection happens via top selector and modal */}
+
+        {/* Address selection modal (dropdown-like) */}
+        <Modal visible={addressModalVisible} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Delivery Address</Text>
+              <FlatList
+                data={userAddresses}
+                keyExtractor={(item) => item.deliveryAddressId.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.modalAddressItem} onPress={() => handleChooseAddress(item)} disabled={anyProcessing}>
+                    <Text style={styles.addressText}>{item.address}, {item.landmark}</Text>
+                    <Text style={styles.addressText}>{item.city}, {item.state} - {item.pin}</Text>
+                    <Text style={styles.addressText}>Mobile: {item.mobile}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <TouchableOpacity style={styles.modalCloseButton} onPress={closeAddressModal} disabled={anyProcessing}>
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          {userAddresses.length > 0 ? (
-            <FlatList
-              data={userAddresses}
-              renderItem={renderAddressItem}
-              keyExtractor={(item) => item.deliveryAddressId.toString()}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.addressList}
-            />
-          ) : (
-            <Text style={styles.emptyAddressText}>No addresses available</Text>
-          )}
-        </View>
+        </Modal>
 
         {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length > 0 && (
-          <View style={styles.totalContainer}>
-            <TouchableOpacity
-              onPress={doPayment}
-              disabled={isPlaceOrderLoading}
-            >
-              <View style={styles.totalTextContainer}>
-                {isPlaceOrderLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color="#fff" />
-                    <Text style={styles.loadingText}>Please wait, order is confirming...</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.totalText}>
-                    Place Order: ₹{totalAmount.toFixed(2)}
-                  </Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          </View>
+          <></>
         )}
       </View>
     </ScrollView>
+
+    {allCartItems.cartItemsDto && allCartItems.cartItemsDto.length > 0 && selectedAddress && (
+      <View style={styles.checkoutBar}>
+        <View style={styles.checkoutInfo}>
+          <Text style={styles.checkoutAmount}>₹{totalAmount.toFixed(2)}</Text>
+          <Text style={styles.checkoutLabel}>Total</Text>
+        </View>
+        <TouchableOpacity style={styles.addMoreButton} onPress={() => router.push('/home')} disabled={anyProcessing}>
+          <Icon name="add-shopping-cart" size={22} color="#007bff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.checkoutButton} onPress={doPayment} disabled={anyProcessing || isPlaceOrderLoading}>
+          {isPlaceOrderLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.checkoutButtonText}>Checkout</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    )}
+    </>
   );
 
   function renderCartItem({ item }) {
+    const isProcessing = loadingButton.cartItemId === item.cartItemId;
     return (
-      <View style={styles.cartItemContainer}>
-        <Image source={{ uri: item.imageUrl }} style={styles.productImage} resizeMode="cover" />
-        <View style={styles.detailsContainer}>
+        <View style={[styles.cartItemContainer, isProcessing ? styles.itemDisabled : null]}>
+          <View style={styles.detailsContainer}>
           <Text style={styles.productName}>{item.productName}</Text>
           <View style={styles.quantityContainer}>
-            <TouchableOpacity
-              style={[
-                styles.quantityButton,
-                (item.quantity <= 1 || (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'dec'))
-                  ? { backgroundColor: '#ccc' }
-                  : null,
-              ]}
-              onPress={() => updateQuantity(item, item.quantity - 1, 'dec')}
-              disabled={item.quantity <= 1 || (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'dec')}
-            >
-              <Icon name="remove" size={20} color="white" />
+              <TouchableOpacity
+                style={[
+                  styles.quantityButton,
+                  (item.quantity <= 1 || (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'dec'))
+                    ? { backgroundColor: '#ccc' }
+                    : null,
+                ]}
+                onPress={() => updateQuantity(item, item.quantity - 1, 'dec')}
+                disabled={anyProcessing || item.quantity <= 1 || (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'dec')}
+              >
+              {loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'dec' ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Icon name="remove" size={20} color="white" />
+              )}
             </TouchableOpacity>
             <Text style={styles.quantity}>{item.quantity}</Text>
             <TouchableOpacity
@@ -386,38 +499,32 @@ export default function Cart() {
                 (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'add') ? { backgroundColor: '#ccc' } : null,
               ]}
               onPress={() => updateQuantity(item, item.quantity + 1, 'add')}
-              disabled={loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'add'}
+                disabled={anyProcessing || (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'add')}
             >
-              <Icon name="add" size={20} color="white" />
+              {loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'add' ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Icon name="add" size={20} color="white" />
+              )}
             </TouchableOpacity>
           </View>
           <Text style={styles.price}>Price: ₹{item.price.toFixed(2)}</Text>
         </View>
         <TouchableOpacity
           onPress={() => confirmDeleteItem(item.productId, item.cartItemId)}
-          disabled={loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'delete'}
+           disabled={anyProcessing || (loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'delete')}
         >
-          <Icon name="delete" size={30} color="red" />
+          {loadingButton.cartItemId === item.cartItemId && loadingButton.type === 'delete' ? (
+            <ActivityIndicator size="small" color="red" />
+          ) : (
+            <Icon name="delete" size={30} color="red" />
+          )}
         </TouchableOpacity>
       </View>
     );
   }
 
-  function renderAddressItem({ item }) {
-    return (
-      <TouchableOpacity
-        style={[
-          styles.addressItem,
-          selectedAddress?.deliveryAddressId === item.deliveryAddressId && styles.selectedAddressItem,
-        ]}
-        onPress={() => handleSelectAddress(item)}
-      >
-        <Text style={styles.addressText}>{item.address}, {item.landmark}</Text>
-        <Text style={styles.addressText}>{item.city}, {item.state} - {item.pin}</Text>
-        <Text style={styles.addressText}>Mobile: {item.mobile}</Text>
-      </TouchableOpacity>
-    );
-  }
+  // address list renderer removed; modal's inline renderer is used for selection
 }
 
 const styles = StyleSheet.create({
@@ -432,6 +539,10 @@ const styles = StyleSheet.create({
   quantityButton: { backgroundColor: '#007bff', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 3 },
   quantity: { fontSize: 16, marginHorizontal: 10, color: '#000', fontWeight: '500' },
   price: { fontSize: 15, color: '#555' },
+  emptyWrapper: { alignItems: 'center', marginTop: 30 },
+  emptyImage: { width: 140, height: 140, marginBottom: 12, opacity: 0.85 },
+  shopButton: { marginTop: 12, backgroundColor: '#007bff', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8 },
+  shopButtonText: { color: '#fff', fontWeight: '700' },
   promoContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 10 },
   promoInput: { flex: 1, borderWidth: 1, borderColor: '#ddd', padding: 10, borderRadius: 8, marginRight: 10, backgroundColor: '#f9f9f9' },
   applyButton: { backgroundColor: '#28a745', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 },
@@ -494,4 +605,41 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 5,
   },
+  breakdownBox: { marginTop: 12, padding: 12, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
+  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  breakdownLabel: { color: '#555' },
+  breakdownValue: { color: '#555', fontWeight: '700' },
+  breakdownDivider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },
+  breakdownTotalLabel: { fontWeight: '700', fontSize: 16 },
+  breakdownTotalValue: { fontWeight: '800', fontSize: 16 },
+  checkoutBar: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', padding: 12, backgroundColor: '#fff', borderTopWidth: 1, borderColor: '#eee', alignItems: 'center' },
+  checkoutInfo: { flex: 1 },
+  checkoutAmount: { fontSize: 18, fontWeight: '800' },
+  checkoutLabel: { color: '#666', fontSize: 12 },
+  checkoutButton: { backgroundColor: '#007bff', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
+  checkoutButtonText: { color: '#fff', fontWeight: '800' },
+  addMoreButton: { marginRight: 12, padding: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  addressActions: { flexDirection: 'row', alignItems: 'center' },
+  selectAddressButton: { marginRight: 8, backgroundColor: '#6c757d', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6 },
+  selectAddressText: { color: '#fff', fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#fff', borderRadius: 8, maxHeight: '80%', padding: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
+  modalAddressItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  modalCloseButton: { marginTop: 12, alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 14 },
+  modalCloseText: { color: '#007bff', fontWeight: '700' },
+  topAddressContainer: { marginTop: 12, marginBottom: 8 },
+  selectedAddressBox: { padding: 12, backgroundColor: '#f1f5f9', borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+  selectedAddressText: { fontSize: 14, color: '#111', marginBottom: 8 },
+  topAddressActions: { flexDirection: 'row', justifyContent: 'flex-end' },
+  needAddressBox: { padding: 12, backgroundColor: '#fff3cd', borderRadius: 8, borderWidth: 1, borderColor: '#ffeeba', alignItems: 'center' },
+  needAddressText: { color: '#856404', fontWeight: '600', marginBottom: 6 },
+  topHeader: { position: 'absolute', left: 0, right: 0, top: StatusBar.currentHeight || 0, zIndex: 20, elevation: 8, paddingHorizontal: 12 },
+  topHeaderInner: { backgroundColor: '#ffffff', borderRadius: 8, padding: 10, marginHorizontal: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 4 },
+  skeletonHeader: { height: 44, borderRadius: 8, backgroundColor: '#eef2f6', marginVertical: 8 },
+  skeletonItem: { paddingVertical: 12 },
+  skeletonLine: { height: 16, backgroundColor: '#eef2f6', borderRadius: 6, marginBottom: 8 },
+  skeletonLineShort: { width: '50%', height: 12, backgroundColor: '#eef2f6', borderRadius: 6 },
+  skeletonBreakdown: { height: 80, backgroundColor: '#eef2f6', borderRadius: 8, marginTop: 12 },
+  itemDisabled: { opacity: 0.6 },
 });
