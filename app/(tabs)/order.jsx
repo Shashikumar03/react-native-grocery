@@ -10,11 +10,13 @@ import {
 } from 'react-native';
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { getOrderHistory } from '../../service/order/OrderHistory';
 import { getCurrentUserId } from '../../utils/token';
 import { cancelUserOrder } from '../../service/order/cancelUserOrder';
 
 export default function Order() {
+  const router = useRouter();
   const [orderHistory, setOrderHistory] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [cancellingOrderId, setCancellingOrderId] = useState(null);
@@ -138,17 +140,34 @@ export default function Order() {
     </View>
   );
 
+  const isEmpty = !refreshing && orderHistory.length === 0;
+
   return (
     <View style={styles.mainContainer}>
       <Text style={styles.title}>Order History</Text>
-      <FlatList
-        data={orderHistory}
-        keyExtractor={(item) => item.orderId.toString()}
-        renderItem={renderOrderItem}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={getUserOrderHistory} />
-        }
-      />
+      {isEmpty ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>No orders yet</Text>
+          <Text style={styles.emptyMessage}>
+            You haven't placed any order. Order something to see your order history here.
+          </Text>
+          <TouchableOpacity
+            style={styles.shopButton}
+            onPress={() => router.push('/home')}
+          >
+            <Text style={styles.shopButtonText}>Order something</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={orderHistory}
+          keyExtractor={(item) => item.orderId.toString()}
+          renderItem={renderOrderItem}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={getUserOrderHistory} />
+          }
+        />
+      )}
     </View>
   );
 }
@@ -232,5 +251,36 @@ const styles = StyleSheet.create({
     color: 'gray',
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  shopButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 10,
+  },
+  shopButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
   },
 });

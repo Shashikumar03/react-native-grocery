@@ -57,6 +57,40 @@ export async function getCurrentPosition() {
 }
 
 /**
+ * Get current address from live location (position + reverse geocode).
+ * Use for cart "current location" display and add-address form prefill.
+ * @returns {{ address: string, landmark: string, city: string, state: string, pin: string } | null}
+ */
+export async function getCurrentAddress() {
+  try {
+    const { granted } = await getLocationPermissionStatus();
+    if (!granted) return null;
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+    const { latitude, longitude } = location.coords;
+    const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+    if (!results || results.length === 0) return null;
+    const r = results[0];
+    const streetParts = [r.streetNumber, r.street].filter(Boolean);
+    const address = streetParts.length ? streetParts.join(' ') : (r.name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+    const city = r.city ?? r.subregion ?? '';
+    const state = r.region ?? '';
+    const pin = r.postalCode ?? '';
+    return {
+      address: address.trim() || 'Current location',
+      landmark: 'Current location',
+      city: city.trim(),
+      state: state.trim(),
+      pin: pin.trim(),
+    };
+  } catch (error) {
+    console.error('Get current address failed:', error);
+    return null;
+  }
+}
+
+/**
  * Send current location to the backend.
  * Gets position (if permission granted), then POSTs to /api/location.
  */

@@ -424,17 +424,31 @@ export default function Cart() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Select Delivery Address</Text>
-              <FlatList
-                data={userAddresses}
-                keyExtractor={(item) => item.deliveryAddressId.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.modalAddressItem} onPress={() => handleChooseAddress(item)} disabled={anyProcessing}>
-                    <Text style={styles.addressText}>{item.address}, {item.landmark}</Text>
-                    <Text style={styles.addressText}>{item.city}, {item.state} - {item.pin}</Text>
-                    <Text style={styles.addressText}>Mobile: {item.mobile}</Text>
+              {userAddresses.length === 0 ? (
+                <View style={styles.modalEmptyAddress}>
+                  <Text style={styles.modalEmptyText}>No addresses yet. Add one to continue.</Text>
+                  <TouchableOpacity
+                    style={styles.modalAddAddressButton}
+                    onPress={() => { closeAddressModal(); handleAddNewAddress(); }}
+                    disabled={anyProcessing}
+                  >
+                    <Icon name="add-location" size={22} color="#fff" />
+                    <Text style={styles.modalAddAddressButtonText}>Add address</Text>
                   </TouchableOpacity>
-                )}
-              />
+                </View>
+              ) : (
+                <FlatList
+                  data={userAddresses}
+                  keyExtractor={(item) => item.deliveryAddressId.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.modalAddressItem} onPress={() => handleChooseAddress(item)} disabled={anyProcessing}>
+                      <Text style={styles.addressText}>{item.address}, {item.landmark}</Text>
+                      <Text style={styles.addressText}>{item.city}, {item.state} - {item.pin}</Text>
+                      <Text style={styles.addressText}>Mobile: {item.mobile}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
               <TouchableOpacity style={styles.modalCloseButton} onPress={closeAddressModal} disabled={anyProcessing}>
                 <Text style={styles.modalCloseText}>Close</Text>
               </TouchableOpacity>
@@ -628,6 +642,10 @@ const styles = StyleSheet.create({
   modalAddressItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
   modalCloseButton: { marginTop: 12, alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 14 },
   modalCloseText: { color: '#007bff', fontWeight: '700' },
+  modalEmptyAddress: { paddingVertical: 24, alignItems: 'center' },
+  modalEmptyText: { fontSize: 16, color: '#555', marginBottom: 16, textAlign: 'center' },
+  modalAddAddressButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#007bff', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, gap: 8 },
+  modalAddAddressButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   topAddressContainer: { marginTop: 12, marginBottom: 8 },
   selectedAddressBox: { padding: 12, backgroundColor: '#f1f5f9', borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
   selectedAddressText: { fontSize: 14, color: '#111', marginBottom: 8 },
